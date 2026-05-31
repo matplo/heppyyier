@@ -43,7 +43,7 @@ source myenv/bin/activate
 pip install heppyyier
 
 # Or from source (editable install):
-git clone https://github.com/yourname/heppyyier
+git clone https://github.com/matplo/heppyyier
 cd heppyyier
 pip install -e .
 ```
