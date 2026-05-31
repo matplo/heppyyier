@@ -1,0 +1,43 @@
+from .loader import get_loader
+from .registry import get_registry
+
+__version__ = "0.1.0"
+
+
+class _ModuleProxy:
+    """Mirrors the HPC `module` command for HEP C++ packages."""
+
+    def load(
+        self,
+        name: str,
+        version: str = None,
+        install_if_missing: bool = False,
+        verbose: bool = False,
+    ) -> None:
+        """Load a package and make it available via cppyy and `import <name>`."""
+        get_loader().load(
+            name,
+            version=version,
+            install_if_missing=install_if_missing,
+            verbose=verbose,
+        )
+
+    def unload(self, name: str) -> None:
+        """Warn that cppyy cannot unload at runtime; use shell `module unload` instead."""
+        get_loader().unload(name)
+
+    def list(self):
+        """Return names of packages loaded in this Python session."""
+        return get_loader().loaded_names()
+
+    def avail(self):
+        """Return names of packages registered in the registry."""
+        return list(get_registry().all_packages().keys())
+
+
+module = _ModuleProxy()
+
+
+def load(name: str, **kwargs) -> None:
+    """Shorthand for heppyyier.module.load(name)."""
+    module.load(name, **kwargs)

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "heppyyier"
+version = "0.1.0"
+description = "HEP C++ package manager with cppyy dynamic bindings"
+requires-python = ">=3.9"
+dependencies = [
+    "cppyy>=3.1",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "click>=8.1",
+    "requests>=2.31",
+    "tqdm>=4.66",
+    "pyyaml>=6.0",
+    "tomli>=2.0; python_version < '3.11'",
+]
+
+[project.scripts]
+heppyyier = "heppyyier.cli:cli"
+heyy = "heppyyier.cli:cli"
+her = "heppyyier.cli:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/heppyyier"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/heppyyier/recipes" = "heppyyier/recipes"

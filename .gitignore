@@ -1,0 +1,36 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# heppyyier runtime directories
+packages/
+*_packages/
+recipe-cache/
+
+# heppyyier local config
+.heppyyier.toml
+
+# Jupyter
+.ipynb_checkpoints/
+*_executed.ipynb
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp

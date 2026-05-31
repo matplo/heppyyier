@@ -1,0 +1,17 @@
+name: hepmc3
+version: "3.3.1"
+url: "https://hepmc.web.cern.ch/hepmc/releases/HepMC3-{version}.tar.gz"
+build_system: cmake
+configure_args:
+  - "-DHEPMC3_ENABLE_PYTHON=OFF"
+  - "-DHEPMC3_ENABLE_ROOTIO=OFF"
+make_jobs: 4
+
+cppyy:
+  namespace: HepMC3
+  headers:
+    - HepMC3/GenEvent.h
+    - HepMC3/GenParticle.h
+    - HepMC3/GenVertex.h
+  libraries:
+    - HepMC3

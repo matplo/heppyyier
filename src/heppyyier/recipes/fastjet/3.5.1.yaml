@@ -1,0 +1,27 @@
+name: fastjet
+version: "3.5.1"
+url: "http://fastjet.fr/repo/fastjet-{version}.tar.gz"
+build_system: autotools
+configure_args:
+  - "--enable-shared"
+  - "--disable-static"
+  - "--enable-allplugins"
+make_jobs: 4
+verify_binary: fastjet-config
+
+cppyy:
+  namespace: fastjet
+  headers:
+    - fastjet/PseudoJet.hh
+    - fastjet/JetDefinition.hh
+    - fastjet/ClusterSequence.hh
+    - fastjet/ClusterSequenceArea.hh
+    - fastjet/Selector.hh
+    - fastjet/tools/GridMedianBackgroundEstimator.hh
+  libraries:
+    - fastjet
+
+# Optional: override with a custom build script.
+# Available template variables: {prefix} {version} {srcdir} {builddir} {n_cores} {configure_args}
+# build_script: |
+#   ./configure --prefix={prefix} {configure_args} && make -j{n_cores} && make install
