@@ -292,6 +292,13 @@ def shell_init():
     click.echo(shell_init_script(), nl=False)
 
 
+@cli.command("modules")
+def modules():
+    """Alias for shell-init: eval output to enable 'module load/unload'."""
+    from .shell import shell_init_script
+    click.echo(shell_init_script(), nl=False)
+
+
 # ---------------------------------------------------------------------------
 # _shell-env-path  (internal, called by the shell `module` function)
 # ---------------------------------------------------------------------------
