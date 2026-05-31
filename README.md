@@ -42,7 +42,10 @@ source myenv/bin/activate
 # From PyPI (once published):
 pip install heppyyier
 
-# Or from source (editable install):
+# Or directly from GitHub (no clone needed):
+pip install git+https://github.com/matplo/heppyyier.git
+
+# Or from a local clone (editable install for development):
 git clone https://github.com/matplo/heppyyier
 cd heppyyier
 pip install -e .
