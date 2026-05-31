@@ -8,16 +8,12 @@ depends_on:
 
 build_script: |
   set -e
-  if ! command -v lhapdf-config >/dev/null 2>&1; then
-    echo "[jewel] ERROR: lhapdf-config not found — install lhapdf first (heppyyier install lhapdf)"
+  lhapdf_prefix="{lhapdf_prefix}"
+  if [ -z "$lhapdf_prefix" ]; then
+    echo "[jewel] ERROR: lhapdf not found in heppyyier registry — install lhapdf first"
     exit 1
   fi
-  lhapdf_lib=$(lhapdf-config --libdir)
-  echo "[jewel] Using LHAPDF libs: $lhapdf_lib"
-  cp Makefile Makefile.orig
-  sed -i.bak "s|/path/to/lhapdf|$lhapdf_lib|g" Makefile
-  sed -i.bak "s|/home/lhapdf/install/lib/|$lhapdf_lib/|g" Makefile
-  make
+  make LHAPDF_PATH="$lhapdf_prefix/lib"
   mkdir -p {prefix}/bin {prefix}/settings {prefix}/info
   cp jewel-{version}-* {prefix}/bin/
   cp *.dat {prefix}/settings/

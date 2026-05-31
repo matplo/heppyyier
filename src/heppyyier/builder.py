@@ -221,6 +221,7 @@ class PackageBuilder:
             lib_dir = str(dep_prefix / "lib")
             env["PATH"] = bin_dir + os.pathsep + env.get("PATH", "")
             env[lib_path_key] = lib_dir + os.pathsep + env.get(lib_path_key, "")
+            env["LIBRARY_PATH"] = lib_dir + os.pathsep + env.get("LIBRARY_PATH", "")
 
         class _Default(dict):
             """Return empty string for any key not in the dict."""
