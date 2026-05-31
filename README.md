@@ -60,7 +60,7 @@ pip install -e .
 
 ## Initialise
 
-Run once after installation to create the package store, fetch recipes, and verify cppyy:
+Run once after installation to create the package store, fetch recipes, and check cppyy:
 
 ```bash
 heppyyier init
@@ -77,6 +77,22 @@ latest recipes are always available:
   logs/               ← build logs
   recipe-cache/       ← cloned recipe repos
   recipe-sources.json ← registered recipe sources
+```
+
+`init` also checks whether the cppyy backend (`libCling`) has broken library references
+(common on macOS when the cppyy wheel was built against a different package manager).
+If broken paths are found they are reported but **never patched automatically**.
+To apply the fix:
+
+```bash
+# Inspect first:
+heppyyier fix-cppyy --check
+
+# Then patch:
+heppyyier fix-cppyy
+
+# Or patch in one step at init time:
+heppyyier init --fix-cppyy
 ```
 
 To refresh recipes at any time (e.g. after a new recipe is added upstream):
@@ -122,7 +138,7 @@ During the Pythia8 build you will see which packages were detected:
 [pythia8] FastJet : .../heppyyier_packages/fastjet/3.5.1
 [pythia8] HepMC3  : .../heppyyier_packages/hepmc3/3.3.1
 [pythia8] LHAPDF6 : .../heppyyier_packages/lhapdf/6.5.4
-[pythia8] configure: --enable-shared --with-fastjet=... --with-hepmc3=... --with-lhapdf6=...
+[pythia8] configure: --with-fastjet3=... --with-hepmc3=... --with-lhapdf6=...
 ```
 
 ### Version precedence
