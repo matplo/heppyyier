@@ -250,11 +250,12 @@ class PackageBuilder:
                 raise BuildError(
                     f"Verification failed: {binary} not found after install"
                 )
-        lib_dir = prefix / "lib"
-        if not any(lib_dir.glob("lib*")):
-            raise BuildError(
-                f"Verification failed: no libraries found in {lib_dir}"
-            )
+        if self.recipe.cppyy_libraries:
+            lib_dir = prefix / "lib"
+            if not any(lib_dir.glob("lib*")):
+                raise BuildError(
+                    f"Verification failed: no libraries found in {lib_dir}"
+                )
         print("Verification passed.")
 
     def _make_registry_record(
