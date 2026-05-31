@@ -7,13 +7,27 @@ verify_binary: lhapdf-config
 
 build_script: |
   set -e
-  if command -v swig >/dev/null 2>&1; then
-    echo "[lhapdf] swig $(swig -version 2>&1 | awk '/Version/{print $3}') found — building with Python bindings"
+
+  # LHAPDF's Python bindings use Cython. The tarball ships a pre-generated
+  # lhapdf.cpp that relies on CPython internals removed in Python 3.14
+  # (ma_version_tag, _PyGC_FINALIZED). When Cython>=3.0 is installed,
+  # LHAPDF's configure regenerates lhapdf.cpp from lhapdf.pyx automatically.
+  py_int=$(python -c "import sys; v=sys.version_info; print(v.major*100+v.minor)")
+
+  python_flag="--without-python"
+  if python -c "import Cython; v=Cython.__version__.split('.'); assert int(v[0])>=3" 2>/dev/null; then
+    cython_ver=$(python -c "import Cython; print(Cython.__version__)")
+    echo "[lhapdf] Cython $cython_ver found — building with Python bindings"
+    python_flag="--with-python-sys-prefix"
+  elif [ "$py_int" -lt 314 ]; then
+    echo "[lhapdf] Cython not found — using pre-generated wrapper (Python < 3.14)"
     python_flag="--with-python-sys-prefix"
   else
-    echo "[lhapdf] swig not found — building without Python bindings"
-    python_flag="--without-python"
+    echo "[lhapdf] WARNING: Python>=3.14 requires Cython>=3.0 to build Python bindings"
+    echo "[lhapdf]   pip install 'cython>=3.0'  then re-run: heppyyier install lhapdf --force"
+    echo "[lhapdf] Building without Python bindings for now"
   fi
+
   ./configure --prefix={prefix} --enable-shared $python_flag
   make -j{n_cores}
   make install
