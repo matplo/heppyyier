@@ -223,6 +223,43 @@ def env(package):
 
 
 # ---------------------------------------------------------------------------
+# demos
+# ---------------------------------------------------------------------------
+
+_DEMOS_BASE = "https://raw.githubusercontent.com/matplo/heppyyier/main/demos"
+_DEMO_FILES = [
+    "demo_fastjet.py",
+    "demo_fjcontrib.py",
+    "demo_pythia_fastjet.py",
+    "demo_fjcontrib.ipynb",
+    "demo_pythia_fastjet.ipynb",
+]
+
+@cli.command()
+@click.option("--dest", default=".", show_default=True, help="Directory to download demos into.")
+@click.option("--overwrite", is_flag=True, help="Overwrite existing files.")
+def demos(dest, overwrite):
+    """Download demo scripts from GitHub to the current directory."""
+    import requests
+    dest_path = pathlib.Path(dest).resolve()
+    dest_path.mkdir(parents=True, exist_ok=True)
+    for fname in _DEMO_FILES:
+        out = dest_path / fname
+        if out.exists() and not overwrite:
+            click.echo(f"  skip  {fname}  (already exists, use --overwrite)")
+            continue
+        url = f"{_DEMOS_BASE}/{fname}"
+        r = requests.get(url, timeout=30)
+        if r.status_code == 200:
+            out.write_bytes(r.content)
+            click.echo(f"  ok    {fname}")
+        else:
+            click.echo(f"  fail  {fname}  (HTTP {r.status_code})", err=True)
+    click.echo(f"\nDemos written to: {dest_path}")
+    click.echo("Run: python demo_fastjet.py")
+
+
+# ---------------------------------------------------------------------------
 # shell-init
 # ---------------------------------------------------------------------------
 
