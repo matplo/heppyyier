@@ -1,5 +1,5 @@
 name: lhapdf
-version: "6.5.4"
+version: "6.5.5"
 url: "https://lhapdf.hepforge.org/downloads/?f=LHAPDF-{version}.tar.gz"
 build_system: script
 make_jobs: 4
