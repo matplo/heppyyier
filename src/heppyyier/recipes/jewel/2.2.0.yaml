@@ -2,7 +2,7 @@ name: jewel
 version: "2.2.0"
 url: "https://jewel.hepforge.org/downloads/?f=jewel-{version}.tar.gz"
 build_system: script
-verify_binary: jewel-2.2.0-vacuum
+verify_binary: jewel-2.2.0-vac
 depends_on:
   - lhapdf
 
@@ -15,11 +15,10 @@ build_script: |
   lhapdf_lib=$(lhapdf-config --libdir)
   echo "[jewel] Using LHAPDF libs: $lhapdf_lib"
   cp Makefile Makefile.orig
-  sed -i.bak "s|/path/to/lhapdf|${lhapdf_lib}|g" Makefile
-  sed -i.bak "s|/home/lhapdf/install/lib/|${lhapdf_lib}/|g" Makefile
+  sed -i.bak "s|/path/to/lhapdf|$lhapdf_lib|g" Makefile
+  sed -i.bak "s|/home/lhapdf/install/lib/|$lhapdf_lib/|g" Makefile
   make
   mkdir -p {prefix}/bin {prefix}/settings {prefix}/info
-  cp jewel-{version}-vacuum {prefix}/bin/ 2>/dev/null || true
-  cp jewel-{version}-medium {prefix}/bin/ 2>/dev/null || true
+  cp jewel-{version}-* {prefix}/bin/
   cp *.dat {prefix}/settings/
   for f in *.txt README GUIDELINES; do [ -f "$f" ] && cp "$f" {prefix}/info/ || true; done
