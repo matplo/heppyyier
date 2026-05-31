@@ -45,6 +45,11 @@ pip install heppyyier
 # Or directly from GitHub (no clone needed):
 pip install git+https://github.com/matplo/heppyyier.git
 
+# To update to the latest version:
+pip install --upgrade git+https://github.com/matplo/heppyyier.git
+# If pip skips the update (version string unchanged), force it:
+pip install --force-reinstall git+https://github.com/matplo/heppyyier.git
+
 # Or from a local clone (editable install for development):
 git clone https://github.com/matplo/heppyyier
 cd heppyyier
