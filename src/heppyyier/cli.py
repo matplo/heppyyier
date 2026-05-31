@@ -294,9 +294,32 @@ def shell_init():
 
 @cli.command("modules")
 def modules():
-    """Alias for shell-init: eval output to enable 'module load/unload'."""
-    from .shell import shell_init_script
-    click.echo(shell_init_script(), nl=False)
+    """Print 'module use <path>' for the heppyyier modulefiles directory.
+
+    Usage: eval "$(heyy modules)"
+    Then:  module load jewel/2.4.0
+    """
+    from .shell import get_modulefiles_dir
+    click.echo(f"module use {get_modulefiles_dir()}")
+
+
+@cli.command("generate-modules")
+def generate_modules():
+    """Regenerate TCL modulefiles for all installed packages."""
+    from .shell import write_tcl_modulefile, get_modulefiles_dir
+    from .registry import get_registry
+    reg = get_registry()
+    count = 0
+    for name, record in reg.all_packages().items():
+        import pathlib
+        mod_file = write_tcl_modulefile(name, record["version"], pathlib.Path(record["prefix"]))
+        click.echo(f"  wrote {mod_file}")
+        count += 1
+    if count == 0:
+        click.echo("No installed packages found.")
+    else:
+        click.echo(f"\nModulefiles at: {get_modulefiles_dir()}")
+        click.echo(f'Add to your shell:  eval "$(heyy modules)"')
 
 
 # ---------------------------------------------------------------------------

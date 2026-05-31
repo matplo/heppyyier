@@ -14,7 +14,7 @@ from tqdm import tqdm
 from .config import get_build_dir, get_log_dir
 from .exceptions import BuildError
 from .recipe import Recipe
-from .shell import generate_env_scripts
+from .shell import generate_env_scripts, write_tcl_modulefile
 
 
 class PackageBuilder:
@@ -52,6 +52,7 @@ class PackageBuilder:
 
         self._verify(prefix)
         generate_env_scripts(self.recipe.name, version, prefix)
+        write_tcl_modulefile(self.recipe.name, version, prefix)
         return self._make_registry_record(prefix, version, log_path)
 
     def _base_env(self) -> dict:
@@ -314,7 +315,7 @@ def register_package(
 ) -> dict:
     from .recipe import find_recipe
     from .registry import get_registry
-    from .shell import generate_env_scripts
+    from .shell import generate_env_scripts, write_tcl_modulefile
 
     recipe = find_recipe(name, version=version, recipe_path=recipe_path)
     prefix_path = pathlib.Path(prefix).resolve()
@@ -339,6 +340,7 @@ def register_package(
     }
 
     generate_env_scripts(recipe.name, ver, prefix_path)
+    write_tcl_modulefile(recipe.name, ver, prefix_path)
     get_registry().register(recipe.name, record)
     print(f"Registered {recipe.name} {ver} from {prefix_path}")
     return record
