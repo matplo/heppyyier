@@ -131,20 +131,21 @@ class PackageBuilder:
 
         return extract_dir
 
-    def _run(self, cmd: list, cwd: pathlib.Path, log_path: pathlib.Path) -> None:
+    def _run(self, cmd: list, cwd: pathlib.Path, log_path: pathlib.Path, env: dict | None = None) -> None:
+        run_env = env if env is not None else self._base_env()
         mode = "a"
         with open(log_path, mode) as log:
             log.write(f"\n$ {' '.join(str(c) for c in cmd)}\n")
             log.flush()
             if self.verbose:
                 proc = subprocess.run(
-                    cmd, cwd=cwd, env=self._base_env(), check=False
+                    cmd, cwd=cwd, env=run_env, check=False
                 )
             else:
                 proc = subprocess.run(
                     cmd,
                     cwd=cwd,
-                    env=self._base_env(),
+                    env=run_env,
                     stdout=log,
                     stderr=subprocess.STDOUT,
                     check=False,
@@ -204,8 +205,22 @@ class PackageBuilder:
         # depends_on — this lets build scripts use optional packages via shell
         # conditionals without declaring a hard dependency.
         pkg_vars: dict = {}
-        for pkg_name, rec in get_registry().all_packages().items():
+        registry = get_registry()
+        for pkg_name, rec in registry.all_packages().items():
             pkg_vars[f"{pkg_name}_prefix"] = rec["prefix"]
+
+        # Add depends_on packages' bin/ and lib/ dirs to PATH and library path
+        # so that tools like lhapdf-config are available during the build.
+        lib_path_key = "DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
+        for dep in self.recipe.depends_on:
+            dep_rec = registry.get(dep)
+            if dep_rec is None:
+                continue
+            dep_prefix = pathlib.Path(dep_rec["prefix"])
+            bin_dir = str(dep_prefix / "bin")
+            lib_dir = str(dep_prefix / "lib")
+            env["PATH"] = bin_dir + os.pathsep + env.get("PATH", "")
+            env[lib_path_key] = lib_dir + os.pathsep + env.get(lib_path_key, "")
 
         class _Default(dict):
             """Return empty string for any key not in the dict."""
@@ -225,7 +240,7 @@ class PackageBuilder:
         )
         script = self.recipe.build_script.format_map(fmt)
         print("Running custom build script ...")
-        self._run(["bash", "-c", script], src_dir, log_path)
+        self._run(["bash", "-c", script], src_dir, log_path, env=env)
 
     def _verify(self, prefix: pathlib.Path) -> None:
         if self.recipe.verify_binary:
