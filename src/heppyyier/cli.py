@@ -236,7 +236,7 @@ _DEMO_FILES = [
 ]
 
 @cli.command()
-@click.option("--dest", default=".", show_default=True, help="Directory to download demos into.")
+@click.option("--dest", default="./heppyyier_demos", show_default=True, help="Directory to download demos into.")
 @click.option("--overwrite", is_flag=True, help="Overwrite existing files.")
 def demos(dest, overwrite):
     """Download demo scripts from GitHub to the current directory."""
