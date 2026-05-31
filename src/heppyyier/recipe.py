@@ -106,23 +106,24 @@ def find_recipe(
     if candidate.exists() and candidate.suffix in (".yaml", ".yml"):
         return load_recipe(candidate)
 
-    # Search built-in recipes, then remote sources
+    # Search remote sources first (allows recipe updates without reinstalling heppyyier),
+    # fall back to built-ins shipped with the package.
     name = name_or_path
+
+    from .recipe_sources import search_sources
+    found = search_sources(name, version)
+    if found:
+        return load_recipe(found)
+
     try:
         path = find_builtin_recipe(name, version)
         return load_recipe(path)
     except RecipeNotFoundError:
         pass
 
-    # Try remote sources
-    from .recipe_sources import search_sources
-    found = search_sources(name, version)
-    if found:
-        return load_recipe(found)
-
     raise RecipeNotFoundError(
         f"No recipe found for '{name}'"
         + (f" version '{version}'" if version else "")
         + ". Run 'heppyyier avail' to see available recipes, "
-        + "or 'heppyyier recipe add <url>' to add a remote source."
+        + "or 'heppyyier recipe update' to refresh from GitHub."
     )

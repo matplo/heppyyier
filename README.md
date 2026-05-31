@@ -60,18 +60,28 @@ pip install -e .
 
 ## Initialise
 
-Run once after installation to create the package store and verify cppyy:
+Run once after installation to create the package store, fetch recipes, and verify cppyy:
 
 ```bash
 heppyyier init
 ```
 
-This creates the package store under your active venv:
+This creates the package store under your active venv and automatically clones the
+[heppyyier-recipes](https://github.com/matplo/heppyyier-recipes) repository so the
+latest recipes are always available:
+
 ```
 <venv>/heppyyier_packages/
-  registry.json    ← installed package index
-  src/             ← cached tarballs (safe to delete to free space)
-  logs/            ← build logs
+  registry.json       ← installed package index
+  src/                ← cached tarballs (safe to delete to free space)
+  logs/               ← build logs
+  recipe-cache/       ← cloned recipe repos
+  recipe-sources.json ← registered recipe sources
+```
+
+To refresh recipes at any time (e.g. after a new recipe is added upstream):
+```bash
+heppyyier recipe update
 ```
 
 Check where your packages will be installed:
@@ -280,6 +290,9 @@ You can extend this with recipes from a GitHub repository or use a one-off recip
 from anywhere on disk.
 
 ### GitHub recipe source
+
+The [matplo/heppyyier-recipes](https://github.com/matplo/heppyyier-recipes) repository
+is registered automatically by `heppyyier init`. You can add further repos the same way:
 
 Point heppyyier at a GitHub repo and it will clone it locally and search it automatically
 on every `install` and `avail` call:

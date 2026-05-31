@@ -125,6 +125,19 @@ def init():
         click.echo(f"Registry already exists: {reg_path}")
     click.echo(f"Packages directory: {pkg_dir}")
 
+    # Auto-register the canonical heppyyier-recipes repo if not already present
+    _RECIPES_REPO = "https://github.com/matplo/heppyyier-recipes"
+    from .recipe_sources import list_sources, add_source
+    existing_urls = {s["url"] for s in list_sources()}
+    if _RECIPES_REPO not in existing_urls:
+        click.echo(f"\nFetching recipes from {_RECIPES_REPO} ...")
+        try:
+            add_source(_RECIPES_REPO)
+        except Exception as exc:
+            click.echo(f"  Warning: could not fetch recipes ({exc}). Run 'heppyyier recipe update' later.", err=True)
+    else:
+        click.echo("Recipe source: already registered")
+
     # Auto-fix cppyy backend broken rpaths (common on macOS with Homebrew vs MacPorts)
     from .cppyy_fix import fix_cppyy, check_cppyy
     if not check_cppyy():
