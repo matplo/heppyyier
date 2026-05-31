@@ -99,6 +99,9 @@ def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path) -> pathl
     if (p / "lib").is_dir():
         lines.append("prepend-path LD_LIBRARY_PATH $prefix/lib")
         lines.append("prepend-path DYLD_LIBRARY_PATH $prefix/lib")
+        for sp in sorted((p / "lib").glob("python*/site-packages")):
+            rel = sp.relative_to(p)
+            lines.append(f"prepend-path PYTHONPATH $prefix/{rel}")
     if (p / "include").is_dir():
         lines.append("prepend-path CPATH $prefix/include")
     content = "\n".join(lines) + "\n"
