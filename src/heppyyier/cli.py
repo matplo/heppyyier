@@ -110,8 +110,9 @@ def info(package):
 # ---------------------------------------------------------------------------
 
 @cli.command()
-def init():
-    """Create packages directory, registry skeleton, and fix cppyy if needed."""
+@click.option("--fix-cppyy", "do_fix_cppyy", is_flag=True, help="Patch broken cppyy library paths without prompting.")
+def init(do_fix_cppyy):
+    """Create packages directory, registry skeleton, and check cppyy."""
     pkg_dir = get_packages_dir()
     pkg_dir.mkdir(parents=True, exist_ok=True)
     (pkg_dir / "logs").mkdir(exist_ok=True)
@@ -138,20 +139,28 @@ def init():
     else:
         click.echo("Recipe source: already registered")
 
-    # Auto-fix cppyy backend broken rpaths (common on macOS with Homebrew vs MacPorts)
-    from .cppyy_fix import fix_cppyy, check_cppyy
-    if not check_cppyy():
-        click.echo("\nDetected broken cppyy backend — attempting auto-fix ...")
-        fixed = fix_cppyy(verbose=True)
-        if fixed:
-            click.echo(f"cppyy patched successfully ({len(fixed)} path(s) fixed).")
+    # Check cppyy backend — report broken paths but never patch without consent
+    from .cppyy_fix import fix_cppyy, check_cppyy, get_broken_deps, _find_libcling
+    if check_cppyy():
+        click.echo("cppyy backend: OK")
+    else:
+        lib = _find_libcling()
+        broken = get_broken_deps(lib)
+        click.echo(f"\ncppyy backend: {len(broken)} broken library path(s) in {lib}:")
+        for p in broken:
+            click.echo(f"  {p}")
+        if do_fix_cppyy:
+            click.echo("Patching ...")
+            fixed = fix_cppyy(verbose=True)
+            if fixed:
+                click.echo(f"cppyy patched successfully ({len(fixed)} path(s) fixed).")
+            else:
+                click.echo("Could not fix all paths. Install missing libraries manually.", err=True)
         else:
             click.echo(
-                "Could not auto-fix cppyy. Run 'heppyyier fix-cppyy' for details.",
-                err=True,
+                "\nRun 'heppyyier fix-cppyy' to inspect and patch, "
+                "or re-run 'heppyyier init --fix-cppyy' to patch now."
             )
-    else:
-        click.echo("cppyy backend: OK")
 
 
 # ---------------------------------------------------------------------------
