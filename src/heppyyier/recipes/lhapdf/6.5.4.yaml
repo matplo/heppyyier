@@ -11,40 +11,14 @@ build_script: |
   py_int=$(python -c "import sys; v=sys.version_info; print(v.major*100+v.minor)")
   echo "[lhapdf] Python $(python --version 2>&1 | awk '{print $2}')"
 
-  # On Python>=3.14 the pre-generated lhapdf.cpp uses removed CPython internals
-  # (PyDictObject.ma_version_tag, _PyGC_FINALIZED).  Patch them in-place so the
-  # file compiles without needing Cython to regenerate it.
+  # On Python>=3.14 the pre-generated lhapdf.cpp uses CPython internals that
+  # were removed: PyDictObject.ma_version_tag and _PyGC_FINALIZED.
+  # Patch them in-place so the file compiles without needing Cython.
   if [ "$py_int" -ge 314 ] && [ -f wrappers/python/lhapdf.cpp ]; then
-    echo "[lhapdf] Patching wrappers/python/lhapdf.cpp for Python 3.14+ compatibility"
-    python - <<'PYEOF'
-import re, sys
-
-path = "wrappers/python/lhapdf.cpp"
-with open(path) as f:
-    src = f.read()
-
-# 1. Disable dict-version caching macro (uses removed ma_version_tag field)
-src = re.sub(
-    r'(#define __PYX_GET_DICT_VERSION\(dict\)[ \t]+)\([^)]*ma_version_tag[^)]*\)',
-    r'\1(0)',
-    src,
-)
-
-# 2. Define _PyGC_FINALIZED as a no-op if not already defined
-compat = (
-    "\n/* heppyyier: Python 3.14 compat — _PyGC_FINALIZED removed */\n"
-    "#ifndef _PyGC_FINALIZED\n"
-    "#define _PyGC_FINALIZED(o) (0)\n"
-    "#endif\n"
-)
-if "_PyGC_FINALIZED" in src and "heppyyier: Python 3.14 compat" not in src:
-    # Insert after the first #include "Python.h"
-    src = src.replace('#include "Python.h"', '#include "Python.h"' + compat, 1)
-
-with open(path, "w") as f:
-    f.write(src)
-print("[lhapdf] lhapdf.cpp patched OK")
-PYEOF
+    echo "[lhapdf] Patching wrappers/python/lhapdf.cpp for Python 3.14+"
+    sed -i.orig 's/#define __PYX_GET_DICT_VERSION(dict).*/#define __PYX_GET_DICT_VERSION(dict) (0)/' wrappers/python/lhapdf.cpp
+    python -c "p='wrappers/python/lhapdf.cpp';s=open(p).read();nl=chr(10);dq=chr(34);inc='#include '+dq+'Python.h'+dq;g=nl+'/* py314 */'+nl+'#ifndef _PyGC_FINALIZED'+nl+'#define _PyGC_FINALIZED(o) (0)'+nl+'#endif'+nl;t=s.replace(inc,inc+g,1) if '_PyGC_FINALIZED' in s and '/* py314 */' not in s else s;open(p,'w').write(t)"
+    echo "[lhapdf] Patch applied"
   fi
 
   ./configure --prefix={prefix} --enable-shared --with-python-sys-prefix
