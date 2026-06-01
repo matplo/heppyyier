@@ -298,6 +298,51 @@ def shell_init():
     click.echo(shell_init_script(), nl=False)
 
 
+# ---------------------------------------------------------------------------
+# completion
+# ---------------------------------------------------------------------------
+
+_COMPLETION_ALIASES = ["heyy", "her", "heppyyier"]
+
+@cli.command("completion")
+@click.option(
+    "--shell", "shell_type",
+    type=click.Choice(["bash", "zsh", "fish"]),
+    default=None,
+    help="Shell type (default: auto-detected from $SHELL).",
+)
+def completion(shell_type):
+    """Print shell completion setup lines for all heppyyier aliases.
+
+    \b
+    Bash / Zsh — add to ~/.bashrc or ~/.zshrc:
+        eval "$(heyy completion)"
+
+    \b
+    Fish — add to ~/.config/fish/config.fish:
+        heyy completion --shell fish | source
+    """
+    import os
+
+    if shell_type is None:
+        sh = os.environ.get("SHELL", "")
+        if "zsh" in sh:
+            shell_type = "zsh"
+        elif "fish" in sh:
+            shell_type = "fish"
+        else:
+            shell_type = "bash"
+
+    if shell_type == "fish":
+        for alias in _COMPLETION_ALIASES:
+            var = f"_{alias.upper()}_COMPLETE"
+            click.echo(f"env {var}=fish_source {alias} | source")
+    else:
+        for alias in _COMPLETION_ALIASES:
+            var = f"_{alias.upper()}_COMPLETE"
+            click.echo(f'eval "$({var}={shell_type}_source {alias})"')
+
+
 @cli.command("modules")
 def modules():
     """Print 'module use <path>' for the heppyyier modulefiles directory.

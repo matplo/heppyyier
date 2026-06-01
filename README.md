@@ -256,6 +256,40 @@ export LHAPDF_DATA_PATH=/data/pdfsets:$LHAPDF_DATA_PATH
 
 ---
 
+## Shell completion
+
+Enable tab completion for `heyy`, `her`, and `heppyyier` in one line.
+
+**Bash** — add to `~/.bashrc`:
+```bash
+eval "$(heyy completion)"
+```
+
+**Zsh** — add to `~/.zshrc` (after `compinit`):
+```zsh
+eval "$(heyy completion)"
+```
+
+**Fish** — add to `~/.config/fish/config.fish`:
+```fish
+heyy completion --shell fish | source
+```
+
+After reloading your shell, pressing `<Tab>` completes commands, subcommands, and options:
+```
+heyy <Tab>               # install  list  avail  info  env  kernel  recipe  …
+heyy install <Tab>       # (available package names from recipes)
+heyy kernel <Tab>        # install
+heyy kernel install --<Tab>  # --name  --display-name  --sys-prefix
+```
+
+The `--shell` flag forces a specific shell if auto-detection is wrong:
+```bash
+heyy completion --shell bash
+```
+
+---
+
 ## Shell module system
 
 ### heppyyier shell function (no Lmod required)
