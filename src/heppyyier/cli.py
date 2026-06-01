@@ -351,7 +351,15 @@ def completion(shell_type):
             click.echo(f'  eval "$({var}=bash_source {alias})"')
         click.echo('else')
         click.echo('  echo "heyy: shell completion requires bash 4.4+ (you have $BASH_VERSION)" >&2')
-        click.echo('  echo "  On macOS: brew install bash  -or-  eval \\"\\$(heyy completion --shell zsh)\\"" >&2')
+        click.echo('  for _heyy_bash in /opt/homebrew/bin/bash /usr/local/bin/bash; do')
+        click.echo('    if [ -x "$_heyy_bash" ] && "$_heyy_bash" -c "(( BASH_VERSINFO[0] >= 4 ))" 2>/dev/null; then')
+        click.echo('      echo "  Found newer bash: $_heyy_bash" >&2')
+        click.echo('      echo "  Switch your login shell: chsh -s $_heyy_bash" >&2')
+        click.echo('      echo "  Or for this session:     exec $_heyy_bash" >&2')
+        click.echo('      break')
+        click.echo('    fi')
+        click.echo('  done')
+        click.echo('  echo "  Or use zsh: eval \\"\\$(heyy completion --shell zsh)\\"" >&2')
         click.echo('fi')
     else:
         for alias in _COMPLETION_ALIASES:
