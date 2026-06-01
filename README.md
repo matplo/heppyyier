@@ -481,6 +481,39 @@ my-recipes/
 
 See the built-in recipes under `src/heppyyier/recipes/` for the full format reference.
 
+### VCS-based recipes (git / svn)
+
+If a package has no tarball (e.g. SVN-only like POWHEG, or a rolling git branch), omit
+the `url` field. heppyyier will skip the download step and run `build_script` directly
+from an empty working directory — the script is responsible for fetching its own source:
+
+```yaml
+name: powheg
+version: "v2"
+# no url — build_script fetches via SVN
+build_system: script
+build_script: |
+  svn co svn://powhegbox.mib.infn.it/trunk/POWHEG-BOX-V2 powheg-box
+  cd powheg-box
+  make -j{n_cores} pwhg_main
+  ...
+```
+
+### Recipe scripting gotchas
+
+Build scripts are processed by Python's `str.format_map()` before being passed to bash.
+This means **any `{...}` in the script is treated as a template variable**, including:
+
+| Pattern | Problem | Fix |
+|---------|---------|-----|
+| `${VAR:-default}` | `{VAR:-default}` consumed by format_map | Use `if [ -z "$VAR" ]; then VAR=default; fi` |
+| `find -exec cp {} \;` | `{}` is a positional field | Escape as `{{}}` |
+| Comments containing `{...}` | Also substituted | Remove or reword the comment |
+
+Heppyyier template variables available in every script:
+`{prefix}`, `{version}`, `{n_cores}`, `{srcdir}`, `{builddir}`, `{CXX}`, `{CC}`,
+and `{<name>_prefix}` for every package currently in the registry.
+
 ---
 
 ## Configuration reference
