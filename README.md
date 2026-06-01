@@ -258,7 +258,9 @@ export LHAPDF_DATA_PATH=/data/pdfsets:$LHAPDF_DATA_PATH
 
 ## Shell module system
 
-Optionally set up a `module` shell function (no Lmod required):
+### heppyyier shell function (no Lmod required)
+
+Optionally set up a `module` shell function:
 
 ```bash
 # Add to ~/.zshrc or ~/.bashrc:
@@ -276,6 +278,36 @@ module avail                 # all installed packages
 
 Python respects what is loaded at the shell level — if `HEPPYYIER_LOADED_FASTJET` is set,
 `heppyyier.load("fastjet")` uses that version without touching the registry.
+
+### TCL modulefiles (Lmod / Environment Modules)
+
+If your site uses Lmod or Environment Modules, heppyyier can generate standard TCL
+modulefiles for all installed packages:
+
+```bash
+heppyyier generate-modules        # write/refresh modulefiles for all installed packages
+```
+
+Modulefiles are written to `<packages_dir>/modulefiles/<name>/<version>` and include
+`PATH`, `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH`, `PYTHONPATH` (for packages with Python
+bindings), and `CPATH`. Re-run after installing new packages to keep them up to date.
+
+To add the directory to your active module search path:
+
+```bash
+eval "$(heppyyier modules)"       # runs: module use <packages_dir>/modulefiles
+```
+
+After that, standard `module` commands work as usual:
+
+```bash
+module load lhapdf/6.5.5
+module load jewel/2.4.0
+module list
+```
+
+> **Tip:** add `eval "$(heppyyier modules)"` to your `~/.bashrc` / `~/.zshrc` so the
+> modulefiles directory is always in the search path.
 
 ---
 
@@ -296,11 +328,15 @@ heppyyier install fastjet pythia8 fjcontrib   # first time only
 python demos/demo_fjcontrib.py
 ```
 
-For Jupyter:
+For Jupyter / JupyterHub:
 ```bash
-pip install jupyter matplotlib numpy
+pip install jupyter matplotlib numpy ipykernel
+heppyyier kernel install          # register the venv as a selectable kernel
 jupyter notebook demos/demo_fjcontrib.ipynb
 ```
+
+Select the `HEP (...)` kernel when prompted, or use `--kernel heppyyier-<venv>` on the
+command line. See the [Jupyter kernel](#jupyter-kernel) section for full options.
 
 ---
 
