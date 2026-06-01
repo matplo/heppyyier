@@ -304,6 +304,48 @@ def shell_init():
 
 _COMPLETION_ALIASES = ["heyy", "her", "heppyyier"]
 
+
+def _bash_completion_script() -> str:
+    """Generate a bash 3.2-compatible completion script from the Click command tree."""
+    top_cmds = sorted(
+        name for name in cli.commands.keys() if not name.startswith("_")
+    )
+    subcommand_map = {
+        name: sorted(cmd.commands.keys())
+        for name, cmd in cli.commands.items()
+        if not name.startswith("_") and hasattr(cmd, "commands")
+    }
+
+    lines = [
+        "# heppyyier bash completion — works with bash 3.2+",
+        "# Add to ~/.bashrc:  eval \"$(heyy completion)\"",
+        "",
+        "_heppyyier_completion() {",
+        "    local cur prev",
+        "    COMPREPLY=()",
+        '    cur="${COMP_WORDS[COMP_CWORD]}"',
+        '    prev="${COMP_WORDS[COMP_CWORD-1]}"',
+        "",
+        f'    local top_cmds="{" ".join(top_cmds)}"',
+        "",
+        '    case "$prev" in',
+    ]
+    for group, subcmds in subcommand_map.items():
+        lines.append(f'        {group})')
+        lines.append(f'            COMPREPLY=( $(compgen -W "{" ".join(subcmds)}" -- "$cur") )')
+        lines.append( '            return 0 ;;')
+    lines += [
+        '    esac',
+        '',
+        '    COMPREPLY=( $(compgen -W "$top_cmds" -- "$cur") )',
+        '    return 0',
+        '}',
+        '',
+    ]
+    for alias in _COMPLETION_ALIASES:
+        lines.append(f"complete -F _heppyyier_completion {alias}")
+    return "\n".join(lines) + "\n"
+
 @cli.command("completion")
 @click.option(
     "--shell", "shell_type",
@@ -338,29 +380,7 @@ def completion(shell_type):
             var = f"_{alias.upper()}_COMPLETE"
             click.echo(f"env {var}=fish_source {alias} | source")
     elif shell_type == "bash":
-        # Emit a runtime version guard — $SHELL path does not reliably indicate
-        # the running bash version (e.g. $SHELL=/bin/bash while homebrew bash 5.x
-        # is active). The guard prints a helpful message on old bash instead of
-        # producing syntax errors.
-        click.echo(
-            'if (( ${BASH_VERSINFO[0]:-0} > 4 ||'
-            ' (${BASH_VERSINFO[0]:-0} == 4 && ${BASH_VERSINFO[1]:-0} >= 4) )); then'
-        )
-        for alias in _COMPLETION_ALIASES:
-            var = f"_{alias.upper()}_COMPLETE"
-            click.echo(f'  eval "$({var}=bash_source {alias})"')
-        click.echo('else')
-        click.echo('  echo "heyy: shell completion requires bash 4.4+ (you have $BASH_VERSION)" >&2')
-        click.echo('  for _heyy_bash in /opt/homebrew/bin/bash /usr/local/bin/bash; do')
-        click.echo('    if [ -x "$_heyy_bash" ] && "$_heyy_bash" -c "(( BASH_VERSINFO[0] >= 4 ))" 2>/dev/null; then')
-        click.echo('      echo "  Found newer bash: $_heyy_bash" >&2')
-        click.echo('      echo "  Switch your login shell: chsh -s $_heyy_bash" >&2')
-        click.echo('      echo "  Or for this session:     exec $_heyy_bash" >&2')
-        click.echo('      break')
-        click.echo('    fi')
-        click.echo('  done')
-        click.echo('  echo "  Or use zsh: eval \\"\\$(heyy completion --shell zsh)\\"" >&2')
-        click.echo('fi')
+        click.echo(_bash_completion_script())
     else:
         for alias in _COMPLETION_ALIASES:
             var = f"_{alias.upper()}_COMPLETE"

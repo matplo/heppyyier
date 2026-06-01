@@ -265,16 +265,13 @@ Enable tab completion for `heyy`, `her`, and `heppyyier` in one line.
 eval "$(heyy completion)"
 ```
 
-**Bash** (requires bash 4.4+) — add to `~/.bashrc`:
+**Bash** — add to `~/.bashrc`:
 ```bash
 eval "$(heyy completion)"
 ```
 
-> **macOS note:** the system bash (`/bin/bash`) is version 3.2 and does not support
-> Click completion (requires 4.4+). The generated script includes a runtime version
-> guard — on old bash it prints a helpful message instead of producing syntax errors.
-> If you use Homebrew bash (`brew install bash`) or zsh, completion works out of the box.
-> Use `--shell zsh` to force zsh output regardless of `$SHELL`.
+The bash script uses `complete -F` / `compgen -W` and works with bash 3.2+,
+including the macOS system bash. No version upgrade required.
 
 **Fish** — add to `~/.config/fish/config.fish`:
 ```fish
