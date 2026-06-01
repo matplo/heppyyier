@@ -13,7 +13,7 @@ _BUILTIN_RECIPES_DIR = pathlib.Path(__file__).parent / "recipes"
 class Recipe:
     name: str
     version: str
-    url: str
+    url: Optional[str]
     build_system: str
     configure_args: List[str] = field(default_factory=list)
     make_jobs: int = 4
@@ -46,7 +46,7 @@ def load_recipe(path: pathlib.Path) -> Recipe:
     return Recipe(
         name=name,
         version=str(data["version"]),
-        url=data["url"],
+        url=data.get("url"),
         build_system=data.get("build_system", "autotools"),
         configure_args=data.get("configure_args", []),
         make_jobs=data.get("make_jobs", 4),

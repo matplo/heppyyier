@@ -70,9 +70,19 @@ class PackageBuilder:
         return env
 
     def _download_and_extract(self, version: str, force: bool = False, redownload: bool = False) -> pathlib.Path:
-        url = self.recipe.resolved_url(version=version)
         src_base = self._build_dir / "src"
         src_base.mkdir(parents=True, exist_ok=True)
+
+        if not self.recipe.url:
+            # No tarball — build_script is responsible for fetching its own source
+            extract_dir = src_base / f"{self.recipe.name}-{version}-src"
+            if force and extract_dir.exists():
+                shutil.rmtree(extract_dir)
+            extract_dir.mkdir(exist_ok=True)
+            return extract_dir
+
+        url = self.recipe.resolved_url(version=version)
+
 
         # Handle HepForge-style query-string URLs: .../downloads/?f=Pkg-1.0.tar.gz
         _last = url.split("/")[-1]
