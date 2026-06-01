@@ -330,20 +330,6 @@ def completion(shell_type):
             shell_type = "zsh"
         elif "fish" in sh:
             shell_type = "fish"
-        elif "bash" in sh:
-            # macOS ships bash 3.2; Click completion requires bash 4.4+.
-            # If $SHELL points to the system bash, silently use zsh instead
-            # (zsh is the macOS default since Catalina and ships with 5.x).
-            if sys.platform == "darwin" and sh in ("/bin/bash", "/usr/bin/bash"):
-                click.echo(
-                    "# macOS system bash (3.2) does not support Click completion"
-                    " (requires 4.4+).\n"
-                    "# Using zsh. For bash, install via Homebrew: brew install bash",
-                    err=True,
-                )
-                shell_type = "zsh"
-            else:
-                shell_type = "bash"
         else:
             shell_type = "bash"
 
@@ -351,10 +337,26 @@ def completion(shell_type):
         for alias in _COMPLETION_ALIASES:
             var = f"_{alias.upper()}_COMPLETE"
             click.echo(f"env {var}=fish_source {alias} | source")
+    elif shell_type == "bash":
+        # Emit a runtime version guard — $SHELL path does not reliably indicate
+        # the running bash version (e.g. $SHELL=/bin/bash while homebrew bash 5.x
+        # is active). The guard prints a helpful message on old bash instead of
+        # producing syntax errors.
+        click.echo(
+            'if (( ${BASH_VERSINFO[0]:-0} > 4 ||'
+            ' (${BASH_VERSINFO[0]:-0} == 4 && ${BASH_VERSINFO[1]:-0} >= 4) )); then'
+        )
+        for alias in _COMPLETION_ALIASES:
+            var = f"_{alias.upper()}_COMPLETE"
+            click.echo(f'  eval "$({var}=bash_source {alias})"')
+        click.echo('else')
+        click.echo('  echo "heyy: shell completion requires bash 4.4+ (you have $BASH_VERSION)" >&2')
+        click.echo('  echo "  On macOS: brew install bash  -or-  eval \\"\\$(heyy completion --shell zsh)\\"" >&2')
+        click.echo('fi')
     else:
         for alias in _COMPLETION_ALIASES:
             var = f"_{alias.upper()}_COMPLETE"
-            click.echo(f'eval "$({var}={shell_type}_source {alias})"')
+            click.echo(f'eval "$({var}=zsh_source {alias})"')
 
 
 @cli.command("modules")

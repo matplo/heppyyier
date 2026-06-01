@@ -271,9 +271,10 @@ eval "$(heyy completion)"
 ```
 
 > **macOS note:** the system bash (`/bin/bash`) is version 3.2 and does not support
-> Click completion. The command auto-detects this and falls back to zsh, which ships
-> as version 5.x and is the macOS default since Catalina. If you use bash via Homebrew
-> (`brew install bash`), pass `--shell bash` explicitly.
+> Click completion (requires 4.4+). The generated script includes a runtime version
+> guard — on old bash it prints a helpful message instead of producing syntax errors.
+> If you use Homebrew bash (`brew install bash`) or zsh, completion works out of the box.
+> Use `--shell zsh` to force zsh output regardless of `$SHELL`.
 
 **Fish** — add to `~/.config/fish/config.fish`:
 ```fish
