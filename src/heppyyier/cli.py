@@ -330,6 +330,20 @@ def completion(shell_type):
             shell_type = "zsh"
         elif "fish" in sh:
             shell_type = "fish"
+        elif "bash" in sh:
+            # macOS ships bash 3.2; Click completion requires bash 4.4+.
+            # If $SHELL points to the system bash, silently use zsh instead
+            # (zsh is the macOS default since Catalina and ships with 5.x).
+            if sys.platform == "darwin" and sh in ("/bin/bash", "/usr/bin/bash"):
+                click.echo(
+                    "# macOS system bash (3.2) does not support Click completion"
+                    " (requires 4.4+).\n"
+                    "# Using zsh. For bash, install via Homebrew: brew install bash",
+                    err=True,
+                )
+                shell_type = "zsh"
+            else:
+                shell_type = "bash"
         else:
             shell_type = "bash"
 

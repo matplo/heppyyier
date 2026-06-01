@@ -260,15 +260,20 @@ export LHAPDF_DATA_PATH=/data/pdfsets:$LHAPDF_DATA_PATH
 
 Enable tab completion for `heyy`, `her`, and `heppyyier` in one line.
 
-**Bash** — add to `~/.bashrc`:
+**Zsh** — add to `~/.zshrc`:
+```zsh
+eval "$(heyy completion)"
+```
+
+**Bash** (requires bash 4.4+) — add to `~/.bashrc`:
 ```bash
 eval "$(heyy completion)"
 ```
 
-**Zsh** — add to `~/.zshrc` (after `compinit`):
-```zsh
-eval "$(heyy completion)"
-```
+> **macOS note:** the system bash (`/bin/bash`) is version 3.2 and does not support
+> Click completion. The command auto-detects this and falls back to zsh, which ships
+> as version 5.x and is the macOS default since Catalina. If you use bash via Homebrew
+> (`brew install bash`), pass `--shell bash` explicitly.
 
 **Fish** — add to `~/.config/fish/config.fish`:
 ```fish
