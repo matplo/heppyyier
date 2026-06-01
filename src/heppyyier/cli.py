@@ -541,3 +541,24 @@ def kernel_install(name, display_name, sys_prefix):
     if "PATH" in env:
         click.echo(f"  PATH         : {env['PATH'][:80]}{'...' if len(env['PATH']) > 80 else ''}")
     click.echo(f"\nSelect '{spec['display_name']}' in JupyterHub/Lab to use it.")
+
+
+# ---------------------------------------------------------------------------
+# Entry point — clean error messages, no tracebacks for known exceptions
+# ---------------------------------------------------------------------------
+
+def main():
+    from .exceptions import RecipeNotFoundError, BuildError, PackageNotInstalledError
+    try:
+        rv = cli(standalone_mode=False)
+        sys.exit(rv or 0)
+    except (RecipeNotFoundError, BuildError, PackageNotInstalledError) as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+    except click.exceptions.Abort:
+        sys.exit(1)
+    except click.exceptions.Exit as exc:
+        sys.exit(exc.exit_code)
+    except click.exceptions.ClickException as exc:
+        exc.show()
+        sys.exit(exc.exit_code)

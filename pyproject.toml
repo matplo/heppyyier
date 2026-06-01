@@ -19,9 +19,9 @@ dependencies = [
 ]
 
 [project.scripts]
-heppyyier = "heppyyier.cli:cli"
-heyy = "heppyyier.cli:cli"
-her = "heppyyier.cli:cli"
+heppyyier = "heppyyier.cli:main"
+heyy = "heppyyier.cli:main"
+her = "heppyyier.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/heppyyier"]
