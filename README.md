@@ -304,6 +304,38 @@ jupyter notebook demos/demo_fjcontrib.ipynb
 
 ---
 
+## Jupyter kernel
+
+Register the current venv as a Jupyter kernel so it can be selected in JupyterHub or JupyterLab:
+
+```bash
+pip install ipykernel          # once, if not already installed
+heppyyier kernel install
+```
+
+The kernel spec embeds `PATH`, `DYLD_LIBRARY_PATH`/`LD_LIBRARY_PATH`, `PYTHONPATH`, and
+`HEPPYYIER_PACKAGES_DIR` for every installed package, so notebooks can immediately do:
+
+```python
+import heppyyier
+heppyyier.load("fastjet")
+
+import lhapdf          # works directly — PYTHONPATH is already set
+```
+
+Options:
+
+```bash
+heppyyier kernel install --name my-hep-env          # custom kernel name
+heppyyier kernel install --display-name "HEP 2026"  # custom label in JupyterHub
+heppyyier kernel install --sys-prefix               # install into sys.prefix (shared hub)
+```
+
+After installing new packages, re-run `heppyyier kernel install` (same `--name`) to refresh
+the embedded paths — the existing spec is replaced in place.
+
+---
+
 ## Registering externally-built packages
 
 If you already have a package built by another tool (e.g. [yasp](https://github.com/matplo/yasp)):

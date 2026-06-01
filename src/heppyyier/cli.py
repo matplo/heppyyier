@@ -408,3 +408,47 @@ def recipe_update():
     """Update all remote recipe sources (git pull)."""
     from .recipe_sources import update_sources
     update_sources()
+
+
+# ---------------------------------------------------------------------------
+# kernel subgroup
+# ---------------------------------------------------------------------------
+
+@cli.group()
+def kernel():
+    """Manage Jupyter kernel registrations."""
+
+
+@kernel.command("install")
+@click.option("--name", default=None, help="Kernel name (default: heppyyier-<venv-name>).")
+@click.option("--display-name", "display_name", default=None,
+              help="Display name shown in JupyterHub/Lab (default: 'HEP (<pkg list>)').")
+@click.option("--sys-prefix", "sys_prefix", is_flag=True, default=False,
+              help="Install into sys.prefix instead of the user's home directory.")
+def kernel_install(name, display_name, sys_prefix):
+    """Register a Jupyter kernel for the current heppyyier environment.
+
+    The kernel spec embeds PATH, library paths, and PYTHONPATH for every
+    installed package, so notebooks work without any manual setup.
+
+    Re-run after installing new packages to refresh the kernel's environment.
+    """
+    from .kernel import install_kernel
+    try:
+        dest = install_kernel(name=name, display_name=display_name, user=not sys_prefix)
+    except RuntimeError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+    # Read back kernel.json to report what was embedded
+    import json
+    spec = json.loads((dest / "kernel.json").read_text())
+    click.echo(f"Kernel installed: {dest}")
+    click.echo(f"  display name : {spec['display_name']}")
+    click.echo(f"  python       : {spec['argv'][0]}")
+    env = spec.get("env", {})
+    if "HEPPYYIER_PACKAGES_DIR" in env:
+        click.echo(f"  packages dir : {env['HEPPYYIER_PACKAGES_DIR']}")
+    if "PATH" in env:
+        click.echo(f"  PATH         : {env['PATH'][:80]}{'...' if len(env['PATH']) > 80 else ''}")
+    click.echo(f"\nSelect '{spec['display_name']}' in JupyterHub/Lab to use it.")
