@@ -16,16 +16,22 @@ def cli():
 # ---------------------------------------------------------------------------
 
 @cli.command()
-@click.argument("package")
-@click.option("--version", "-v", default=None, help="Package version to install.")
-@click.option("--recipe", "recipe_path", default=None, help="Path to a YAML recipe file.")
+@click.argument("packages", nargs=-1, required=True)
+@click.option("--version", "-v", default=None, help="Package version (single-package installs only).")
+@click.option("--recipe", "recipe_path", default=None, help="Path to a YAML recipe file (single-package installs only).")
 @click.option("--force", is_flag=True, help="Re-extract source and rebuild (keeps cached tarball).")
 @click.option("--redownload", is_flag=True, help="Delete cached tarball and re-download before rebuilding.")
 @click.option("--verbose", is_flag=True, help="Show build output in terminal.")
-def install(package, version, recipe_path, force, redownload, verbose):
-    """Download, build, and register a HEP C++ package."""
+def install(packages, version, recipe_path, force, redownload, verbose):
+    """Download, build, and register one or more HEP C++ packages (in order)."""
     from .builder import build_package
-    build_package(package, version=version, recipe_path=recipe_path, force=force, redownload=redownload, verbose=verbose)
+    for i, package in enumerate(packages):
+        # --version and --recipe only apply when a single package is given
+        _version = version if len(packages) == 1 else None
+        _recipe_path = recipe_path if len(packages) == 1 else None
+        if len(packages) > 1:
+            click.echo(f"\n[{i+1}/{len(packages)}] Installing {package} ...")
+        build_package(package, version=_version, recipe_path=_recipe_path, force=force, redownload=redownload, verbose=verbose)
 
 
 # ---------------------------------------------------------------------------

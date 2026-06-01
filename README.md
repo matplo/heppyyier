@@ -125,6 +125,15 @@ and LHAPDF6 **only if those packages are already present in the registry at conf
 No explicit dependency is declared — if a package is installed, Pythia8 picks it up
 automatically; if not, that interface is simply omitted.
 
+You can pass multiple package names to `install` and they are built **sequentially in the
+order given** — which is all that is needed to satisfy the implicit Pythia8 dependencies:
+
+```bash
+heppyyier install fastjet hepmc3 lhapdf pythia8 fjcontrib
+```
+
+Or one at a time:
+
 ```bash
 heppyyier install fastjet           # (1) jet finding
 heppyyier install hepmc3            # (2) event record I/O
@@ -154,6 +163,13 @@ To control which version Pythia8 sees, install (or `register`) the desired fastj
 heppyyier install fastjet --verbose          # show build output live
 heppyyier install fastjet --force            # re-extract and rebuild (keeps cached tarball)
 heppyyier install fastjet --redownload       # delete tarball and start completely fresh
+
+# Flags apply to all packages when multiple names are given:
+heppyyier install fastjet hepmc3 lhapdf pythia8 fjcontrib --verbose
+
+# --version and --recipe only take effect for a single-package install:
+heppyyier install fastjet --version 3.4.2
+heppyyier install mypackage --recipe /path/to/mypackage/1.0.yaml
 ```
 
 ### Inspecting what is installed
