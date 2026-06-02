@@ -185,6 +185,31 @@ def _linux_is_healthy(lib: pathlib.Path) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Venv safety helpers
+# ---------------------------------------------------------------------------
+
+def is_in_venv() -> bool:
+    """Return True if running inside a virtual environment."""
+    return (
+        sys.prefix != sys.base_prefix
+        or hasattr(sys, "real_prefix")  # older virtualenv sets this
+        or bool(sys.exec_prefix != sys.base_exec_prefix)
+    )
+
+
+def libcling_in_venv(lib: Optional[pathlib.Path] = None) -> bool:
+    """Return True if libCling lives inside the active venv (safe to patch)."""
+    lib = lib or _find_libcling()
+    if lib is None:
+        return False
+    try:
+        lib.resolve().relative_to(pathlib.Path(sys.prefix).resolve())
+        return True
+    except ValueError:
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 

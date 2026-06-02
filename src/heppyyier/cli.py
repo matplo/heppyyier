@@ -116,8 +116,7 @@ def info(package):
 # ---------------------------------------------------------------------------
 
 @cli.command()
-@click.option("--fix-cppyy", "do_fix_cppyy", is_flag=True, help="Patch broken cppyy library paths without prompting.")
-def init(do_fix_cppyy):
+def init():
     """Create packages directory, registry skeleton, and check cppyy."""
     pkg_dir = get_packages_dir()
     pkg_dir.mkdir(parents=True, exist_ok=True)
@@ -145,27 +144,33 @@ def init(do_fix_cppyy):
     else:
         click.echo("Recipe source: already registered")
 
-    # Check cppyy backend — report broken paths but never patch without consent
-    from .cppyy_fix import fix_cppyy, check_cppyy, get_broken_deps, _find_libcling
-    if check_cppyy():
+    # Check cppyy backend and auto-fix if the library is inside this venv
+    from .cppyy_fix import fix_cppyy, check_cppyy, get_broken_deps, _find_libcling, is_in_venv, libcling_in_venv
+    lib = _find_libcling()
+    if lib is None:
+        click.echo("cppyy backend: not found (cppyy not installed?)")
+    elif check_cppyy():
         click.echo("cppyy backend: OK")
     else:
-        lib = _find_libcling()
         broken = get_broken_deps(lib)
         click.echo(f"\ncppyy backend: {len(broken)} broken library path(s) in {lib}:")
         for p in broken:
             click.echo(f"  {p}")
-        if do_fix_cppyy:
-            click.echo("Patching ...")
+        if is_in_venv() and libcling_in_venv(lib):
+            click.echo("Auto-fixing (library is inside this venv) ...")
             fixed = fix_cppyy(verbose=True)
             if fixed:
                 click.echo(f"cppyy patched successfully ({len(fixed)} path(s) fixed).")
             else:
-                click.echo("Could not fix all paths. Install missing libraries manually.", err=True)
+                click.echo(
+                    "Could not auto-fix (install_name_tool / patchelf missing?).\n"
+                    "Run 'heppyyier fix-cppyy' to retry manually.",
+                    err=True,
+                )
         else:
             click.echo(
-                "\nRun 'heppyyier fix-cppyy' to inspect and patch, "
-                "or re-run 'heppyyier init --fix-cppyy' to patch now."
+                "\nLibrary is outside this venv — not patching automatically.\n"
+                "Run 'heppyyier fix-cppyy' to inspect and patch manually."
             )
 
 
