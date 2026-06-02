@@ -9,6 +9,11 @@ make_jobs: 4
 build_script: |
   set -e
   fjconfig={fastjet_prefix}/bin/fastjet-config
+  if [ ! -x "$fjconfig" ]; then
+    echo "[fjcontrib] ERROR: fastjet-config not found at $fjconfig"
+    echo "[fjcontrib] Install fastjet first: heyy install fastjet"
+    exit 1
+  fi
   fjlibs=$($fjconfig --libs --plugins)
   # Pass 1: static build — configure reads 'version' files first
   ./configure --fastjet-config=$fjconfig --prefix={prefix} LDFLAGS="$fjlibs"
