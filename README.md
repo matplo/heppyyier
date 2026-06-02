@@ -60,6 +60,41 @@ pip install -e .
 
 ---
 
+## Google Colab
+
+heppyyier works in [Google Colab](https://colab.research.google.com) without any local setup.
+Use `!` to run shell commands from a notebook cell:
+
+```python
+# Cell 1 — install heppyyier
+!pip install git+https://github.com/matplo/heppyyier.git
+
+# Cell 2 — initialise (creates package store, patches cppyy)
+!heppyyier init
+
+# Cell 3 — build HEP packages (~10–20 min first time; Colab has 2+ cores)
+!heppyyier install fastjet hepmc3 lhapdf pythia8 fjcontrib --verbose
+
+# Cell 4 — use them
+import heppyyier
+heppyyier.load('fastjet')
+heppyyier.load('fjcontrib')
+heppyyier.load('pythia8')
+
+import cppyy, pythia8, fastjet, fjcontrib
+# → ready to use
+```
+
+**Notes:**
+- Each Colab runtime is ephemeral — packages must be reinstalled when the runtime resets.
+  The build takes ~10–20 min; consider saving the compiled packages to Google Drive and
+  registering them with `heppyyier register` to avoid rebuilding every session.
+- `--verbose` shows live build output, which is useful in Colab to confirm progress.
+- See `demos/demo_softdrop_splitting.ipynb` for a complete worked example you can open
+  directly in Colab.
+
+---
+
 ## Initialise
 
 Run once after installation to create the package store, fetch recipes, and check cppyy:
@@ -423,10 +458,12 @@ Demo scripts live in the `demos/` directory:
 
 | Script | What it shows |
 |--------|---------------|
+| `demos/demo_fastjet.py` | Basic FastJet jet finding |
+| `demos/demo_pythia_fastjet.py` | Pythia8 + FastJet: event generation and jet clustering |
+| `demos/demo_pythia_fastjet.ipynb` | Same as above in a Jupyter notebook |
 | `demos/demo_fjcontrib.py` | SoftDrop, Nsubjettiness τ₂₁, EnergyCorrelator C₂ on Pythia8 dijets |
 | `demos/demo_fjcontrib.ipynb` | Same as above in a Jupyter notebook with per-jet inspector table |
-| `demos/demo_fastjet.py` | Basic FastJet jet finding |
-| `demos/demo_pythia_fastjet.py` | Pythia8 + FastJet combined example |
+| `demos/demo_softdrop_splitting.ipynb` | SoftDrop splitting function: $z_g$ and $\theta_g$ distributions ([open in Colab](https://colab.research.google.com/github/matplo/heppyyier/blob/main/demos/demo_softdrop_splitting.ipynb)) |
 
 Run:
 ```bash
