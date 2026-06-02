@@ -81,15 +81,17 @@ class Loader:
                 version=record["version"],
                 recipe_path=record.get("recipe_path"),
             )
-            headers   = recipe.cppyy_headers
-            libraries = recipe.cppyy_libraries
-            namespace = recipe.cppyy_namespace
-            deps      = recipe.depends_on
+            headers      = recipe.cppyy_headers
+            libraries    = recipe.cppyy_libraries
+            namespace    = recipe.cppyy_namespace
+            deps         = recipe.depends_on
+            python_paths = recipe.python_paths
         except RecipeNotFoundError:
-            headers   = record.get("headers", [])
-            libraries = record.get("libraries", [])
-            namespace = record.get("cppyy_namespace") or name
-            deps      = record.get("depends_on", [])
+            headers      = record.get("headers", [])
+            libraries    = record.get("libraries", [])
+            namespace    = record.get("cppyy_namespace") or name
+            deps         = record.get("depends_on", [])
+            python_paths = []
 
         # Load dependencies first
         if deps:
@@ -100,6 +102,7 @@ class Loader:
                     self.load(dep, verbose=verbose)
 
         self._setup_cppyy(record, headers, libraries, verbose)
+        self._setup_python_paths(record, python_paths, verbose)
         self._inject_proxy_module(name, namespace)
         self._loaded.add(name)
 
@@ -187,6 +190,22 @@ class Loader:
                 cppyy.include(header)
             except Exception as e:
                 warnings.warn(f"Could not include '{header}': {e}")
+
+    def _setup_python_paths(
+        self,
+        record: dict,
+        python_paths: List[str],
+        verbose: bool,
+    ) -> None:
+        if not python_paths:
+            return
+        prefix = pathlib.Path(record["prefix"])
+        for rel in python_paths:
+            full = str(prefix / rel)
+            if full not in sys.path:
+                sys.path.insert(0, full)
+                if verbose:
+                    print(f"[heppyyier] Added to sys.path: {full}")
 
     def _inject_proxy_module(self, name: str, ns_name: str) -> None:
         ns_name = ns_name or name
