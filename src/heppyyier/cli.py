@@ -439,9 +439,9 @@ def upgrade():
     uv = shutil.which("uv")
 
     if uv:
-        cmd = [uv, "pip", "install", "--reinstall", _HEPPYYIER_GITHUB]
+        cmd = [uv, "pip", "install", "--reinstall-package", "heppyyier", _HEPPYYIER_GITHUB]
     else:
-        cmd = [str(pip), "install", "--force-reinstall", _HEPPYYIER_GITHUB]
+        cmd = [str(pip), "install", "--force-reinstall", "--no-deps", _HEPPYYIER_GITHUB]
 
     click.echo(f"Upgrading heppyyier from GitHub ...")
     click.echo(f"  {' '.join(cmd)}")
