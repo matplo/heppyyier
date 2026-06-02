@@ -30,6 +30,7 @@ build_script: |
   make -j{n_cores} all && make install
   mkdir -p {prefix}/lib
   set +e
+  failed_libs=""
   for cdir in */; do
     c=$(basename "$cdir")
     [ -d "$c" ] || continue
@@ -37,13 +38,22 @@ build_script: |
     ofiles=$(ls *.o 2>/dev/null)
     if [ -n "$ofiles" ]; then
       if [ "Darwin" == $(uname) ]; then
-        {CXX} -fPIC -dynamiclib -o {prefix}/lib/lib$c.dylib *.o $fjlibs
+        # -undefined dynamic_lookup defers cross-contrib symbol resolution to load time
+        {CXX} -fPIC -dynamiclib -undefined dynamic_lookup \
+          -o {prefix}/lib/lib$c.dylib *.o $fjlibs \
+          || failed_libs="$failed_libs $c"
       else
-        {CXX} -fPIC -shared -o {prefix}/lib/lib$c.so *.o $fjlibs
+        {CXX} -fPIC -shared \
+          -o {prefix}/lib/lib$c.so *.o $fjlibs -L{prefix}/lib \
+          || failed_libs="$failed_libs $c"
       fi
     fi
     cd {srcdir}
   done
+  if [ -n "$failed_libs" ]; then
+    echo "[fjcontrib] WARNING: shared libs not built (cross-contrib deps missing?):$failed_libs"
+    echo "[fjcontrib] Static libs from 'make install' are still available."
+  fi
 
 cppyy:
   namespace: fastjet::contrib
