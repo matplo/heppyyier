@@ -211,6 +211,57 @@ import cppyy
 cppyy.gbl.fastjet.PseudoJet(1.0, 0.0, 1.0, 1.414)
 ```
 
+### ROOT — PyROOT via native Python bindings
+
+ROOT is available via the [heppyyier-recipes](https://github.com/matplo/heppyyier-recipes)
+repository (not built-in). Install and use it with:
+
+```bash
+heyy recipe update          # pull latest recipes including root
+heyy install root           # builds ROOT 6.40.00 (~30 min first time)
+```
+
+```python
+import heppyyier
+heppyyier.load("root")      # adds ROOT's lib/ to sys.path; does NOT import pip-cppyy
+import ROOT
+h = ROOT.TH1F("h", "h", 100, 0, 100)
+h.Fill(42)
+```
+
+**ROOT ships its own cppyy and cling** — a different build from the pip-installed cppyy
+that heppyyier uses for FastJet, Pythia8, etc. Because of this:
+
+- `heppyyier.load("root")` only adds ROOT's `lib/` directory to `sys.path`; it does
+  **not** import pip-cppyy. ROOT's `_facade.py` then finds ROOT's own `cppyy` package
+  (also in `lib/`) and initialises correctly.
+- Mixing ROOT and other cppyy-loaded packages **in the same Python session** is risky.
+  Two different cling builds will be loaded and symbol conflicts are likely.
+- Recommended patterns:
+
+  ```python
+  # Pattern A — ROOT only session
+  import heppyyier
+  heppyyier.load("root")
+  import ROOT
+
+  # Pattern B — cppyy packages only session
+  import heppyyier
+  heppyyier.load("fastjet")
+  heppyyier.load("pythia8")
+  import fastjet, pythia8
+
+  # Pattern C — ROOT + other libs, using ROOT's own interface
+  import heppyyier
+  heppyyier.load("root")
+  import ROOT
+  ROOT.gSystem.Load(".../heppyyier_packages/fastjet/3.5.1/lib/libfastjet")
+  # use ROOT.fastjet directly
+  ```
+
+heppyyier will emit a `UserWarning` if you call `heppyyier.load("root")` after cppyy
+packages are already loaded (or vice versa) so the conflict is visible at runtime.
+
 ### LHAPDF — native Python bindings
 
 LHAPDF is built with SWIG Python bindings. After `heppyyier install lhapdf` the module
