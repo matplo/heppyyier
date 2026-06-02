@@ -204,8 +204,9 @@ def _heppyyier_autoload():
         if _os.environ.get(_key):
             try:
                 _h.load(_name)
-            except Exception:
-                pass
+            except Exception as _e:
+                import sys as _sys
+                print(f"[heppyyier] autoload failed for {_name!r}: {_e}", file=_sys.stderr)
 
 _heppyyier_autoload()
 del _heppyyier_autoload
