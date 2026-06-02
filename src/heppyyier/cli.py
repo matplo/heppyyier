@@ -272,6 +272,7 @@ _DEMO_FILES = [
     "demo_pythia_fastjet.py",
     "demo_fjcontrib.ipynb",
     "demo_pythia_fastjet.ipynb",
+    "demo_softdrop_splitting.ipynb",
 ]
 
 @cli.command()

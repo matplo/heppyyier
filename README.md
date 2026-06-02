@@ -90,6 +90,12 @@ import cppyy, pythia8, fastjet, fjcontrib
   The build takes ~10–20 min; consider saving the compiled packages to Google Drive and
   registering them with `heppyyier register` to avoid rebuilding every session.
 - `--verbose` shows live build output, which is useful in Colab to confirm progress.
+- After `heppyyier init`, download the latest demo notebooks with:
+  ```
+  !heppyyier demos
+  ```
+  This fetches all demo files from GitHub into `./heppyyier_demos/`. Re-run after
+  `heyy upgrade` to pick up new or updated demos.
 - See `demos/demo_softdrop_splitting.ipynb` for a complete worked example you can open
   directly in Colab.
 
@@ -469,6 +475,12 @@ Run:
 ```bash
 heppyyier install fastjet pythia8 fjcontrib   # first time only
 python demos/demo_fjcontrib.py
+```
+
+To get the latest demos after an upgrade (demos are not part of the installed package):
+```bash
+heyy demos                # downloads all demos into ./heppyyier_demos/
+heyy demos --overwrite    # re-download even if files already exist
 ```
 
 For Jupyter / JupyterHub:
