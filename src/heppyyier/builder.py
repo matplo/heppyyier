@@ -162,8 +162,12 @@ class PackageBuilder:
                     check=False,
                 )
         if proc.returncode != 0:
+            if len(cmd) >= 3 and cmd[0] == "bash" and cmd[1] == "-c":
+                cmd_repr = "bash -c [build script]"
+            else:
+                cmd_repr = " ".join(str(c) for c in cmd)
             raise BuildError(
-                f"Command failed (exit {proc.returncode}): {' '.join(str(c) for c in cmd)}\n"
+                f"Command failed (exit {proc.returncode}): {cmd_repr}\n"
                 f"See log: {log_path}"
             )
 
