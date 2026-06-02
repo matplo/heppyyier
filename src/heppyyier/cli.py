@@ -424,6 +424,36 @@ def generate_modules():
 
 
 # ---------------------------------------------------------------------------
+# upgrade
+# ---------------------------------------------------------------------------
+
+_HEPPYYIER_GITHUB = "git+https://github.com/matplo/heppyyier.git"
+
+@cli.command()
+def upgrade():
+    """Reinstall heppyyier itself from GitHub (picks up latest commits)."""
+    import shutil
+    import subprocess
+
+    pip = pathlib.Path(sys.executable).parent / "pip"
+    uv = shutil.which("uv")
+
+    if uv:
+        cmd = [uv, "pip", "install", "--reinstall", _HEPPYYIER_GITHUB]
+    else:
+        cmd = [str(pip), "install", "--force-reinstall", _HEPPYYIER_GITHUB]
+
+    click.echo(f"Upgrading heppyyier from GitHub ...")
+    click.echo(f"  {' '.join(cmd)}")
+    result = subprocess.run(cmd)
+    if result.returncode == 0:
+        click.echo("Done. Restart your shell or re-enter the henv subshell to use the new version.")
+    else:
+        click.echo("Upgrade failed — check the output above.", err=True)
+        sys.exit(result.returncode)
+
+
+# ---------------------------------------------------------------------------
 # _shell-env-path  (internal, called by the shell `module` function)
 # ---------------------------------------------------------------------------
 
