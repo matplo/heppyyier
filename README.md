@@ -385,6 +385,36 @@ module list
 > **Tip:** add `eval "$(heppyyier modules)"` to your `~/.bashrc` / `~/.zshrc` so the
 > modulefiles directory is always in the search path.
 
+### Python auto-load via `module load`
+
+`heyy init` and `heyy generate-modules` both install a `heppyyier_autoload.pth` file
+into the venv's `site-packages`. Python processes `.pth` files at startup, so any
+package loaded with `module load` before starting Python is available to import
+directly — no `heppyyier.load()` call needed:
+
+```bash
+eval "$(heyy modules)"            # register modulefiles dir (once, or in ~/.bashrc)
+heyy generate-modules             # write modulefiles + install autoload hook
+
+module load fastjet
+module load pythia8
+
+python -c "import fastjet, pythia8; print(fastjet.PseudoJet)"
+```
+
+For Jupyter notebooks or scripts that run without `module load`, the explicit call
+still works as before:
+
+```python
+import heppyyier
+heppyyier.load("fastjet")
+import fastjet
+```
+
+> **Note:** the `.pth` hook imports `heppyyier` at Python startup when any
+> `HEPPYYIER_LOADED_*` env var is set. When no modules are loaded the check is
+> a single `any()` scan of `os.environ` — effectively free.
+
 ---
 
 ## Examples
