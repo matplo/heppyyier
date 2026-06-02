@@ -81,18 +81,18 @@ latest recipes are always available:
 
 `init` also checks whether the cppyy backend (`libCling`) has broken library references
 (common on macOS when the cppyy wheel was built against a different package manager).
-If broken paths are found they are reported but **never patched automatically**.
-To apply the fix:
+When running inside a virtual environment, broken paths are **patched automatically** —
+only files inside the venv are ever modified.
+
+If the auto-fix cannot run (e.g. outside a venv, or `install_name_tool` / `patchelf`
+is missing), inspect and patch manually:
 
 ```bash
-# Inspect first:
+# Inspect only:
 heppyyier fix-cppyy --check
 
-# Then patch:
+# Patch:
 heppyyier fix-cppyy
-
-# Or patch in one step at init time:
-heppyyier init --fix-cppyy
 ```
 
 To refresh recipes at any time (e.g. after a new recipe is added upstream):
@@ -294,27 +294,6 @@ heyy completion --shell bash
 ---
 
 ## Shell module system
-
-### heppyyier shell function (no Lmod required)
-
-Optionally set up a `module` shell function:
-
-```bash
-# Add to ~/.zshrc or ~/.bashrc:
-eval "$(heppyyier shell-init)"
-```
-
-Then in new shells:
-```bash
-module load fastjet          # sets FASTJET_DIR, PATH, LD_LIBRARY_PATH, …
-module load fastjet/3.5.1    # specific version
-module unload fastjet
-module list                  # what is currently loaded
-module avail                 # all installed packages
-```
-
-Python respects what is loaded at the shell level — if `HEPPYYIER_LOADED_FASTJET` is set,
-`heppyyier.load("fastjet")` uses that version without touching the registry.
 
 ### TCL modulefiles (Lmod / Environment Modules)
 
