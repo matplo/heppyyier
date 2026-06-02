@@ -174,6 +174,11 @@ def init():
                 "Run 'heppyyier fix-cppyy' to inspect and patch manually."
             )
 
+    # Install sitecustomize.py for auto-loading via module load
+    from .shell import write_sitecustomize
+    sc = write_sitecustomize()
+    click.echo(f"sitecustomize.py installed: {sc}")
+
 
 # ---------------------------------------------------------------------------
 # config
@@ -407,7 +412,7 @@ def modules():
 @cli.command("generate-modules")
 def generate_modules():
     """Regenerate TCL modulefiles for all installed packages."""
-    from .shell import write_tcl_modulefile, get_modulefiles_dir
+    from .shell import write_tcl_modulefile, get_modulefiles_dir, write_sitecustomize
     from .registry import get_registry
     reg = get_registry()
     count = 0
@@ -421,6 +426,8 @@ def generate_modules():
     else:
         click.echo(f"\nModulefiles at: {get_modulefiles_dir()}")
         click.echo(f'Add to your shell:  eval "$(heyy modules)"')
+    sc = write_sitecustomize()
+    click.echo(f"sitecustomize.py refreshed: {sc}")
 
 
 # ---------------------------------------------------------------------------
