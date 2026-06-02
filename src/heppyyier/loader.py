@@ -121,8 +121,8 @@ class Loader:
                 if dep not in self._loaded:
                     self.load(dep, verbose=verbose)
 
-        self._setup_cppyy(record, headers, libraries, verbose)
         self._setup_python_paths(record, python_paths, verbose)
+        self._setup_cppyy(record, headers, libraries, verbose)
         self._inject_proxy_module(name, namespace)
         self._loaded.add(name)
 
@@ -175,6 +175,8 @@ class Loader:
         libraries: List[str],
         verbose: bool,
     ) -> None:
+        if not headers and not libraries:
+            return
         self._preload_cppyy_deps()
         try:
             import cppyy
