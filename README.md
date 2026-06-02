@@ -45,10 +45,12 @@ pip install heppyyier
 # Or directly from GitHub (no clone needed):
 pip install git+https://github.com/matplo/heppyyier.git
 
-# To update to the latest version:
-pip install --upgrade git+https://github.com/matplo/heppyyier.git
-# If pip skips the update (version string unchanged), force it:
+# To update to the latest version (once inside an activated venv):
+heyy upgrade
+
+# Or manually with pip / uv:
 pip install --force-reinstall git+https://github.com/matplo/heppyyier.git
+uv pip install --reinstall git+https://github.com/matplo/heppyyier.git
 
 # Or from a local clone (editable install for development):
 git clone https://github.com/matplo/heppyyier
@@ -94,6 +96,13 @@ heppyyier fix-cppyy --check
 # Patch:
 heppyyier fix-cppyy
 ```
+
+To upgrade heppyyier itself to the latest GitHub version from inside an active venv:
+```bash
+heppyyier upgrade
+```
+This uses `uv pip install --reinstall` (or `pip --force-reinstall`) to bypass the
+package cache. Re-enter the subshell after upgrading to pick up new entry points.
 
 To refresh recipes at any time (e.g. after a new recipe is added upstream):
 ```bash
