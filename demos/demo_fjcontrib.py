@@ -11,45 +11,34 @@ heppyyier.load('fjcontrib')
 heppyyier.load('pythia8')
 
 import cppyy
+import pythia8
+import fastjet
+import fjcontrib
 
-# ── FastJet / Pythia8 aliases ─────────────────────────────────────────────────
-Pythia       = cppyy.gbl.Pythia8.Pythia
-PseudoJet    = cppyy.gbl.fastjet.PseudoJet
-JetDef       = cppyy.gbl.fastjet.JetDefinition
-ClusterSeq   = cppyy.gbl.fastjet.ClusterSequence
-antikt       = cppyy.gbl.fastjet.antikt_algorithm
-sorted_by_pt = cppyy.gbl.fastjet.sorted_by_pt
-PseudoJetVec = cppyy.gbl.std.vector[PseudoJet]
-
-# ── fjcontrib aliases ─────────────────────────────────────────────────────────
-SoftDrop            = cppyy.gbl.fastjet.contrib.SoftDrop
-Nsubjettiness       = cppyy.gbl.fastjet.contrib.Nsubjettiness
-KT_Axes             = cppyy.gbl.fastjet.contrib.KT_Axes
-UnnormalizedMeasure = cppyy.gbl.fastjet.contrib.UnnormalizedMeasure
-EnergyCorrelator    = cppyy.gbl.fastjet.contrib.EnergyCorrelator
+PseudoJetVec = cppyy.gbl.std.vector[fastjet.PseudoJet]
 
 # ── Jet parameters ────────────────────────────────────────────────────────────
 R      = 0.8     # large-R jets to resolve substructure
 pt_min = 200.0   # GeV
 
-jet_def = JetDef(antikt, R)
+jet_def = fastjet.JetDefinition(fastjet.antikt_algorithm, R)
 
 # SoftDrop: β=0, z_cut=0.1  (mMDT-like aggressive grooming)
-sd = SoftDrop(0.0, 0.1, R)
+sd = fjcontrib.SoftDrop(0.0, 0.1, R)
 
 # Nsubjettiness — store axes/measure objects: cppyy refs must outlive calculators
-_axes   = KT_Axes()
-_meas   = UnnormalizedMeasure(1.0)
-tau1_fn = Nsubjettiness(1, _axes, _meas)
-tau2_fn = Nsubjettiness(2, _axes, _meas)
-tau3_fn = Nsubjettiness(3, _axes, _meas)
+_axes   = fjcontrib.KT_Axes()
+_meas   = fjcontrib.UnnormalizedMeasure(1.0)
+tau1_fn = fjcontrib.Nsubjettiness(1, _axes, _meas)
+tau2_fn = fjcontrib.Nsubjettiness(2, _axes, _meas)
+tau3_fn = fjcontrib.Nsubjettiness(3, _axes, _meas)
 
 # EnergyCorrelator — C2 = e3 / e2^2  (quark/gluon / boosted-W discrimination)
-ec2_fn = EnergyCorrelator(2, 1.0)
-ec3_fn = EnergyCorrelator(3, 1.0)
+ec2_fn = fjcontrib.EnergyCorrelator(2, 1.0)
+ec3_fn = fjcontrib.EnergyCorrelator(3, 1.0)
 
 # ── Pythia8 setup ─────────────────────────────────────────────────────────────
-pythia = Pythia()
+pythia = pythia8.Pythia()
 pythia.readString('Beams:eCM = 13000.')
 pythia.readString('HardQCD:all = on')
 pythia.readString('PhaseSpace:pTHatMin = 200.')
@@ -76,10 +65,10 @@ for i_ev in range(n_events):
     for i in range(pythia.event.size()):
         p = pythia.event[i]
         if p.isFinal() and p.isVisible():
-            particles.push_back(PseudoJet(p.px(), p.py(), p.pz(), p.e()))
+            particles.push_back(fastjet.PseudoJet(p.px(), p.py(), p.pz(), p.e()))
 
-    cs   = ClusterSeq(particles, jet_def)
-    jets = sorted_by_pt(cs.inclusive_jets(pt_min))
+    cs   = fastjet.ClusterSequence(particles, jet_def)
+    jets = fastjet.sorted_by_pt(cs.inclusive_jets(pt_min))
 
     for jet in jets:
         groomed = sd.result(jet)

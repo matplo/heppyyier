@@ -1,10 +1,10 @@
 """
-Demo: using FastJet via heppyyier + cppyy.
+Demo: using FastJet via heppyyier.
 
 Run with:
     python demo_fastjet.py
 
-Or, to use the shell module system first:
+Or, with the shell module system:
     eval "$(heppyyier shell-init)"
     module load fastjet
     python demo_fastjet.py
@@ -13,17 +13,15 @@ Or, to use the shell module system first:
 import heppyyier
 heppyyier.load("fastjet")
 
+import cppyy
 import fastjet
-import cppyy
 
-import cppyy
-cppyy.include("fastjet/config.h")
-print(f"FastJet version: {cppyy.gbl.fastjet.fastjet_version_string()}")
+print(f"FastJet version: {fastjet.fastjet_version_string()}")
 print()
 
 # --- Build a simple event: a few particles as PseudoJets ---
 # cppyy requires std::vector<PseudoJet>, not a plain Python list
-PseudoJetVec = cppyy.gbl.std.vector[cppyy.gbl.fastjet.PseudoJet]
+PseudoJetVec = cppyy.gbl.std.vector[fastjet.PseudoJet]
 particles = PseudoJetVec()
 for px, py, pz, E in [
     ( 1.0,  0.5,  5.0, 6.0),
@@ -56,11 +54,6 @@ for i, jet in enumerate(jets):
 # --- Also try kt algorithm for comparison ---
 print()
 jet_def_kt = fastjet.JetDefinition(fastjet.kt_algorithm, R)
-cs_kt = fastjet.ClusterSequence(particles, jet_def_kt)  # same vector works
+cs_kt = fastjet.ClusterSequence(particles, jet_def_kt)
 jets_kt = fastjet.sorted_by_pt(cs_kt.inclusive_jets(ptmin=1.0))
 print(f"kt R={R}: found {len(jets_kt)} jets")
-
-# --- Access via cppyy.gbl directly as well ---
-print()
-pj = cppyy.gbl.fastjet.PseudoJet(1.0, 0.0, 1.0, 1.414)
-print(f"Direct cppyy.gbl.fastjet.PseudoJet: pt={pj.pt():.4f}, eta={pj.eta():.4f}")

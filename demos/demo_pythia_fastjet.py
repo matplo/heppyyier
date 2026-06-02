@@ -13,21 +13,12 @@ import cppyy
 import pythia8
 import fastjet
 
-# Convenience aliases into the cppyy namespaces
-Pythia      = cppyy.gbl.Pythia8.Pythia
-Event       = cppyy.gbl.Pythia8.Event
-PseudoJet   = cppyy.gbl.fastjet.PseudoJet
-JetDef      = cppyy.gbl.fastjet.JetDefinition
-ClusterSeq  = cppyy.gbl.fastjet.ClusterSequence
-antikt      = cppyy.gbl.fastjet.antikt_algorithm
-sorted_by_pt = cppyy.gbl.fastjet.sorted_by_pt
-
-PseudoJetVec = cppyy.gbl.std.vector[PseudoJet]
+PseudoJetVec = cppyy.gbl.std.vector[fastjet.PseudoJet]
 
 # ---------------------------------------------------------------------------
 # Initialise Pythia
 # ---------------------------------------------------------------------------
-pythia = Pythia()
+pythia = pythia8.Pythia()
 
 # pp collisions at 13 TeV, QCD dijets with pThat > 20 GeV
 pythia.readString("Beams:eCM = 13000.")
@@ -42,7 +33,7 @@ pythia.init()
 # Jet definition: anti-kt R=0.4
 # ---------------------------------------------------------------------------
 R = 0.4
-jet_def = JetDef(antikt, R)
+jet_def = fastjet.JetDefinition(fastjet.antikt_algorithm, R)
 pt_min  = 20.0   # GeV — minimum jet pT to report
 
 # ---------------------------------------------------------------------------
@@ -68,14 +59,14 @@ for i_event in range(n_events):
             continue
         if not p.isVisible():   # skip neutrinos, LSP, etc.
             continue
-        particles.push_back(PseudoJet(p.px(), p.py(), p.pz(), p.e()))
+        particles.push_back(fastjet.PseudoJet(p.px(), p.py(), p.pz(), p.e()))
 
     if particles.size() == 0:
         continue
 
     # Cluster
-    cs   = ClusterSeq(particles, jet_def)
-    jets = sorted_by_pt(cs.inclusive_jets(pt_min))
+    cs   = fastjet.ClusterSequence(particles, jet_def)
+    jets = fastjet.sorted_by_pt(cs.inclusive_jets(pt_min))
 
     n_jets_total += len(jets)
 
