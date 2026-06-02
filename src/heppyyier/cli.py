@@ -7,6 +7,7 @@ from .config import get_build_dir, get_packages_dir, get_registry_path
 
 
 @click.group()
+@click.version_option(message="%(prog)s %(version)s")
 def cli():
     """heppyyier — HEP C++ package manager with cppyy bindings."""
 
