@@ -41,3 +41,42 @@ module = _ModuleProxy()
 def load(name: str, **kwargs) -> None:
     """Shorthand for heppyyier.module.load(name)."""
     module.load(name, **kwargs)
+
+
+def gSystem_load(name: str) -> None:
+    """Load a heppyyier-installed package into ROOT via ROOT.gSystem.Load().
+
+    Use this in ROOT-first sessions (Pattern C) to make a package's C++ symbols
+    available through ROOT's own cling, without invoking pip-cppyy.
+
+    Example::
+
+        import heppyyier
+        heppyyier.load('root')
+        import ROOT
+        heppyyier.gSystem_load('fastjet')
+        heppyyier.gSystem_load('pythia8')
+        p = ROOT.Pythia8.Pythia()
+        j = ROOT.fastjet.PseudoJet(1, 0, 1, 1.4)
+    """
+    try:
+        import ROOT
+    except ImportError:
+        raise ImportError("ROOT is not importable — run heppyyier.load('root') and import ROOT first")
+
+    reg = get_registry()
+    rec = reg.get(name)
+    if rec is None:
+        raise KeyError(f"Package '{name}' is not installed. Run: heyy install {name}")
+
+    import pathlib
+    lib_dir = pathlib.Path(rec["lib_dir"])
+    loaded = []
+    for lib in lib_dir.glob(f"lib{name}.*"):
+        if lib.suffix in (".so", ".dylib") and ".so." not in lib.name:
+            ret = ROOT.gSystem.Load(str(lib))
+            if ret in (0, 1):   # 0 = loaded, 1 = already loaded
+                loaded.append(lib.name)
+                break
+    if not loaded:
+        raise FileNotFoundError(f"No shared library found for '{name}' in {lib_dir}")
