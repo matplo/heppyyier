@@ -178,6 +178,15 @@ class Loader:
         if not headers and not libraries:
             return
         self._preload_cppyy_deps()
+        if "cppyy" not in sys.modules:
+            _root_prefix = os.environ.get("HEPPYYIER_LOADED_ROOT_PREFIX", "")
+            if _root_prefix:
+                _root_lib = str(pathlib.Path(_root_prefix) / "lib")
+                for _var in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
+                    _val = os.environ.get(_var, "")
+                    _filtered = ":".join(p for p in _val.split(":") if p and p != _root_lib)
+                    if _filtered != _val:
+                        os.environ[_var] = _filtered
         try:
             import cppyy
         except ImportError:
