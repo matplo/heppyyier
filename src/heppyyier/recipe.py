@@ -9,6 +9,11 @@ from .exceptions import RecipeNotFoundError
 _BUILTIN_RECIPES_DIR = pathlib.Path(__file__).parent / "recipes"
 
 
+def _recipe_sort_key(p: pathlib.Path) -> str:
+    stem = p.stem
+    return stem if any(c.isdigit() for c in stem) else ""
+
+
 @dataclass
 class Recipe:
     name: str
@@ -67,7 +72,7 @@ def find_builtin_recipe(name: str, version: Optional[str] = None) -> pathlib.Pat
     if not pkg_dir.is_dir():
         raise RecipeNotFoundError(f"No built-in recipe for '{name}'")
 
-    yamls = sorted(pkg_dir.glob("*.yaml"), reverse=True)
+    yamls = sorted(pkg_dir.glob("*.yaml"), key=_recipe_sort_key, reverse=True)
     if not yamls:
         raise RecipeNotFoundError(f"No recipe files found in {pkg_dir}")
 
@@ -86,7 +91,7 @@ def list_builtin_recipes() -> list:
         return results
     for pkg_dir in sorted(_BUILTIN_RECIPES_DIR.iterdir()):
         if pkg_dir.is_dir():
-            for yaml_file in sorted(pkg_dir.glob("*.yaml"), reverse=True):
+            for yaml_file in sorted(pkg_dir.glob("*.yaml"), key=_recipe_sort_key, reverse=True):
                 results.append((pkg_dir.name, yaml_file.stem))
     return results
 

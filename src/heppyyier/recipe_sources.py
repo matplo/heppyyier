@@ -5,9 +5,11 @@ import re
 import subprocess
 from datetime import datetime, timezone
 from typing import Optional
+
 from urllib.parse import urlparse
 
 from .config import get_recipe_cache_dir, get_recipe_sources_path
+from .recipe import _recipe_sort_key
 from .exceptions import HeppyyierError
 
 
@@ -132,7 +134,7 @@ def search_sources(name: str, version: Optional[str] = None) -> Optional[pathlib
         if not pkg_dir.is_dir():
             continue
 
-        yamls = sorted(pkg_dir.glob("*.yaml"), reverse=True)
+        yamls = sorted(pkg_dir.glob("*.yaml"), key=_recipe_sort_key, reverse=True)
         if not yamls:
             continue
 
@@ -156,6 +158,6 @@ def list_all_remote_recipes() -> list:
             continue
         for pkg_dir in sorted(base.iterdir()):
             if pkg_dir.is_dir():
-                for y in sorted(pkg_dir.glob("*.yaml"), reverse=True):
+                for y in sorted(pkg_dir.glob("*.yaml"), key=_recipe_sort_key, reverse=True):
                     results.append((pkg_dir.name, y.stem, src["url"]))
     return results
