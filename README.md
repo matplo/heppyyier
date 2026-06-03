@@ -479,6 +479,7 @@ Demo scripts live in the `demos/` directory:
 | `demos/demo_fastjet.py` | Basic FastJet jet finding |
 | `demos/demo_pythia_fastjet.py` | Pythia8 + FastJet: event generation and jet clustering |
 | `demos/demo_pythia_fastjet.ipynb` | Same as above in a Jupyter notebook |
+| `demos/demo_pythia_fastjet_root.py` | Pythia8 + FastJet → ROOT TTree ntuple written to a .root file (requires root) |
 | `demos/demo_fjcontrib.py` | SoftDrop, Nsubjettiness τ₂₁, EnergyCorrelator C₂ on Pythia8 dijets |
 | `demos/demo_fjcontrib.ipynb` | Same as above in a Jupyter notebook with per-jet inspector table |
 | `demos/demo_softdrop_splitting.ipynb` | SoftDrop splitting function: $z_g$ and $\theta_g$ distributions ([open in Colab](https://colab.research.google.com/github/matplo/heppyyier/blob/main/demos/demo_softdrop_splitting.ipynb)) |

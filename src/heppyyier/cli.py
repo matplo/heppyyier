@@ -270,6 +270,7 @@ _DEMO_FILES = [
     "demo_fastjet.py",
     "demo_fjcontrib.py",
     "demo_pythia_fastjet.py",
+    "demo_pythia_fastjet_root.py",
     "demo_fjcontrib.ipynb",
     "demo_pythia_fastjet.ipynb",
     "demo_softdrop_splitting.ipynb",
