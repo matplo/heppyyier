@@ -303,6 +303,13 @@ that heppyyier uses for FastJet, Pythia8, etc. Because of this:
 heppyyier will emit a `UserWarning` if you call `heppyyier.load("root")` after cppyy
 packages are already loaded (or vice versa) so the conflict is visible at runtime.
 
+> **`module load root` with the auto-load hook:** if ROOT and other cppyy-based packages
+> (e.g. hepmc3, fastjet) are all loaded via the module system simultaneously, heppyyier
+> automatically strips ROOT's `lib/` from `DYLD_LIBRARY_PATH`/`LD_LIBRARY_PATH` before
+> the first `import cppyy`. This prevents a startup crash caused by ROOT's `libcling.dylib`
+> shadowing cppyy_backend's own cling. The sessions-must-be-separate rule still applies —
+> both cling instances cannot be used together in the same process.
+
 ### LHAPDF — native Python bindings
 
 LHAPDF is built with SWIG Python bindings. After `heppyyier install lhapdf` the module
