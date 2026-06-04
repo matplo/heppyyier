@@ -16,6 +16,10 @@ Run:
     python demo_pythia_fastjet_root_cppyy.py
 """
 
+# Packages must be loaded before running. Either:
+#   module load root fastjet pythia8   # autoload hook handles the rest
+# or uncomment:
+#   import heppyyier; heppyyier.load("fastjet"); heppyyier.load("pythia8"); heppyyier.load("root")
 import cppyy
 import pythia8
 import fastjet

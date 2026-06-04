@@ -5,6 +5,10 @@ Run with:
     python demo_fjcontrib.py
 """
 
+# Packages must be loaded before running. Either:
+#   module load fastjet fjcontrib pythia8   # autoload hook handles the rest
+# or uncomment:
+#   import heppyyier; heppyyier.load("fastjet"); heppyyier.load("fjcontrib"); heppyyier.load("pythia8")
 import cppyy
 import pythia8
 import fastjet

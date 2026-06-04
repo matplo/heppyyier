@@ -10,6 +10,10 @@ Or, with the shell module system:
     python demo_fastjet.py
 """
 
+# Packages must be loaded before running. Either:
+#   module load fastjet          # autoload hook handles the rest
+# or uncomment:
+#   import heppyyier; heppyyier.load("fastjet")
 import cppyy
 import fastjet
 
