@@ -128,11 +128,11 @@ for i_event in range(n_events):
 # ---------------------------------------------------------------------------
 pythia.stat()
 
+n_entries = tree.GetEntries()   # read before Close() frees the TTree
 outfile.Write()
 outfile.Close()
 
-n_entries = tree.GetEntries() if not outfile.IsZombie() else n_events
-print(f"\nWrote pythia_jets.root  ({n_events} events, {tree.GetEntries()} tree entries)")
+print(f"\nWrote pythia_jets.root  ({n_events} events, {n_entries} tree entries)")
 print("Branches: event, npart, njets, pt[], eta[], phi[], e[], m[], nconst[], is_leading[]")
 print("\nQuick check with ROOT:")
 print("  root -l pythia_jets.root")
