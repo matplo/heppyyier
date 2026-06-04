@@ -546,6 +546,76 @@ the embedded paths — the existing spec is replaced in place.
 
 ---
 
+## Shared packages on a cluster
+
+On an HPC cluster a single set of precompiled packages can be shared across
+user accounts. No one else needs to rebuild — they just point heppyyier at the
+shared directory and generate their own kernel spec.
+
+### Option 1 — shared filesystem (NFS, GPFS, Lustre, …)
+
+**Admin / package builder** (once):
+```bash
+export HEPPYYIER_PACKAGES_DIR=/shared/hep/packages
+heyy init
+heyy install fastjet hepmc3 lhapdf pythia8 fjcontrib
+heyy generate-modules   # optional: write Lmod/TCL modulefiles into the same tree
+```
+
+**Each user** (no compilation needed):
+```bash
+export HEPPYYIER_PACKAGES_DIR=/shared/hep/packages
+heyy kernel install          # writes a personal kernel.json pointing at the shared packages
+```
+
+Then in a notebook or script:
+```python
+import heppyyier
+heppyyier.load('fastjet')
+heppyyier.load('pythia8')
+import fastjet, pythia8   # ready — no build, no wait
+```
+
+> **Tip:** add `export HEPPYYIER_PACKAGES_DIR=/shared/hep/packages` to
+> `~/.bashrc` / `~/.bash_profile`, or set it from your site's module system,
+> so it is always active.
+
+Each user's `heyy kernel install` creates a `kernel.json` in their own
+`~/.local/share/jupyter/kernels/` that references the shared packages. The
+packages themselves are never copied. To remove a kernel:
+```bash
+jupyter kernelspec list
+jupyter kernelspec remove <kernel-name>
+```
+
+### Option 2 — packages built by another tool
+
+If your packages were compiled by [yasp](https://github.com/matplo/yasp) or
+another build system, register them without rebuilding:
+```bash
+export HEPPYYIER_PACKAGES_DIR=/shared/hep/packages
+heyy register fastjet --prefix /path/to/fastjet/3.5.1 --version 3.5.1
+heyy register pythia8 --prefix /path/to/pythia8/8.317  --version 8.317
+heyy kernel install   # now embeds the registered prefixes
+```
+
+### Option 3 — portable tarball (no shared filesystem)
+
+Pack on the source machine:
+```bash
+tar -czf hep-packages.tar.gz -C /shared/hep/packages .
+```
+
+Unpack on the target machine (OS and Python version must be compatible):
+```bash
+mkdir -p ~/.henvs/default
+tar -xzf hep-packages.tar.gz -C ~/.henvs/default
+export HEPPYYIER_PACKAGES_DIR=~/.henvs/default
+heyy kernel install
+```
+
+---
+
 ## Registering externally-built packages
 
 If you already have a package built by another tool (e.g. [yasp](https://github.com/matplo/yasp)):
