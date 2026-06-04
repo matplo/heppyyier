@@ -5,11 +5,6 @@ Run with:
     python demo_fjcontrib.py
 """
 
-import heppyyier
-heppyyier.load('fastjet')
-heppyyier.load('fjcontrib')
-heppyyier.load('pythia8')
-
 import cppyy
 import pythia8
 import fastjet

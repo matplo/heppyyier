@@ -10,9 +10,6 @@ Or, with the shell module system:
     python demo_fastjet.py
 """
 
-import heppyyier
-heppyyier.load("fastjet")
-
 import cppyy
 import fastjet
 

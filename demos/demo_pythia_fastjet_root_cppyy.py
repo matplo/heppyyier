@@ -16,11 +16,6 @@ Run:
     python demo_pythia_fastjet_root_cppyy.py
 """
 
-import heppyyier
-heppyyier.load("pythia8")
-heppyyier.load("fastjet")
-heppyyier.load("root")
-
 import cppyy
 import pythia8
 import fastjet

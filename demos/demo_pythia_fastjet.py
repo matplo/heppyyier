@@ -5,10 +5,6 @@ Run with:
     python demo_pythia_fastjet.py
 """
 
-import heppyyier
-heppyyier.load("pythia8")
-heppyyier.load("fastjet")
-
 import cppyy
 import pythia8
 import fastjet
