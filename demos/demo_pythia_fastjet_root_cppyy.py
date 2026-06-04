@@ -1,46 +1,30 @@
 """
-Experiment: pip-cppyy (pythia8, fastjet) + ROOT TTree in the same session.
+Demo: pip-cppyy (pythia8, fastjet) + ROOT TTree in the same session.
 
 Load order: cppyy packages first, then import ROOT.
 ROOT is used only for TFile/TTree output; generation and clustering
 stay entirely in pip-cppyy land — no object passing across cling contexts.
 
+NOTE: requires ROOT to be available via the module system before running.
+      ROOT's module adds its lib/ to DYLD_LIBRARY_PATH and sys.path, which
+      the autoload hook picks up so that `import ROOT` works alongside
+      pip-cppyy. Without `module load root` first, ROOT's _facade._finalSetup
+      fails because it cannot find ROOT's C++ namespace via pip-cppyy's cling.
+
 Run:
-    module load fastjet pythia8 root   # or rely on heppyyier.load() below
+    module load root fastjet pythia8
     python demo_pythia_fastjet_root_cppyy.py
 """
 
 import heppyyier
 heppyyier.load("pythia8")
 heppyyier.load("fastjet")
-heppyyier.load("root")    # adds ROOT lib/ to sys.path; pip-cppyy already owns cling
+heppyyier.load("root")
 
-import ctypes, pathlib
 import cppyy
 import pythia8
 import fastjet
-
-# ROOT's _facade._finalSetup() calls cppyy.gbl.ROOT.GetROOT() — but at this
-# point cppyy is pip-cppyy, which only knows pythia8/fastjet headers.
-# Fix: pre-load ROOT's core libraries and headers into pip-cppyy's cling so
-# that cppyy.gbl.ROOT, cppyy.gbl.TFile, cppyy.gbl.TTree are all available
-# before import ROOT triggers _finalSetup.
-_root_lib = pathlib.Path(heppyyier.get_registry().get('root')['lib_dir'])
-_root_inc = pathlib.Path(heppyyier.get_registry().get('root')['include_dir'])
-cppyy.add_include_path(str(_root_inc))
-for _lib in ['libCore', 'libImt', 'libNet', 'libRIO', 'libHist', 'libTree']:
-    for _ext in ('.dylib', '.so'):
-        _candidate = _root_lib / f"{_lib}{_ext}"
-        if _candidate.exists():
-            try:
-                ctypes.CDLL(str(_candidate), ctypes.RTLD_GLOBAL)
-            except OSError as e:
-                print(f"[pre-load] warning: {_lib}: {e}")
-            break
-for _header in ('TROOT.h', 'TFile.h', 'TTree.h'):
-    cppyy.include(_header)
-
-import ROOT   # _finalSetup now finds cppyy.gbl.ROOT via pip-cppyy's cling
+import ROOT
 
 PseudoJetVec = cppyy.gbl.std.vector[fastjet.PseudoJet]
 
