@@ -15,14 +15,32 @@ heppyyier.load("pythia8")
 heppyyier.load("fastjet")
 heppyyier.load("root")    # adds ROOT lib/ to sys.path; pip-cppyy already owns cling
 
+import ctypes, pathlib
 import cppyy
 import pythia8
 import fastjet
 
-# ROOT import happens after pip-cppyy is fully set up.
-# ROOT's _facade.py will find pip-cppyy in sys.modules['cppyy'] and call
-# _finalSetup() on first attribute access — this is the experiment.
-import ROOT
+# ROOT's _facade._finalSetup() calls cppyy.gbl.ROOT.GetROOT() — but at this
+# point cppyy is pip-cppyy, which only knows pythia8/fastjet headers.
+# Fix: pre-load ROOT's core libraries and headers into pip-cppyy's cling so
+# that cppyy.gbl.ROOT, cppyy.gbl.TFile, cppyy.gbl.TTree are all available
+# before import ROOT triggers _finalSetup.
+_root_lib = pathlib.Path(heppyyier.get_registry().get('root')['lib_dir'])
+_root_inc = pathlib.Path(heppyyier.get_registry().get('root')['include_dir'])
+cppyy.add_include_path(str(_root_inc))
+for _lib in ['libCore', 'libImt', 'libNet', 'libRIO', 'libHist', 'libTree']:
+    for _ext in ('.dylib', '.so'):
+        _candidate = _root_lib / f"{_lib}{_ext}"
+        if _candidate.exists():
+            try:
+                ctypes.CDLL(str(_candidate), ctypes.RTLD_GLOBAL)
+            except OSError as e:
+                print(f"[pre-load] warning: {_lib}: {e}")
+            break
+for _header in ('TROOT.h', 'TFile.h', 'TTree.h'):
+    cppyy.include(_header)
+
+import ROOT   # _finalSetup now finds cppyy.gbl.ROOT via pip-cppyy's cling
 
 PseudoJetVec = cppyy.gbl.std.vector[fastjet.PseudoJet]
 
