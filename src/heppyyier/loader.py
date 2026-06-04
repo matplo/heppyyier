@@ -135,8 +135,59 @@ class Loader:
             "depends_on": [],
         }
 
+    def _ensure_cxx17_headers(self) -> None:
+        """On Linux, add the system C++ include path to CPATH if <filesystem> is missing.
+
+        cppyy's rootcling inherits CPATH when it builds the PCH cache. On HPC
+        systems (NERSC Perlmutter etc.) the C++17 headers are not in the default
+        search path, so the PCH build fails with 'filesystem file not found' and
+        the process subsequently segfaults. Fix by asking the system compiler for
+        its own include search list and prepending the relevant directories.
+        """
+        if not sys.platform.startswith("linux"):
+            return
+        import shutil
+        import subprocess
+
+        def _has_filesystem(d: pathlib.Path) -> bool:
+            return (d / "filesystem").exists()
+
+        cpath_dirs = [pathlib.Path(p) for p in os.environ.get("CPATH", "").split(":") if p]
+        if any(_has_filesystem(p) for p in cpath_dirs):
+            return
+
+        cxx = shutil.which("g++") or shutil.which("c++")
+        if cxx is None:
+            return
+        try:
+            r = subprocess.run(
+                [cxx, "-v", "-x", "c++", "-E", "/dev/null"],
+                capture_output=True, text=True, timeout=10,
+            )
+            output = r.stderr
+        except Exception:
+            return
+
+        dirs_to_add = []
+        in_block = False
+        for line in output.splitlines():
+            if "#include <...> search starts here" in line:
+                in_block = True
+                continue
+            if "End of search list" in line:
+                break
+            if in_block:
+                p = pathlib.Path(line.strip())
+                if p.is_dir() and _has_filesystem(p):
+                    dirs_to_add.append(str(p))
+
+        if dirs_to_add:
+            existing = os.environ.get("CPATH", "")
+            os.environ["CPATH"] = ":".join(dirs_to_add) + (":" + existing if existing else "")
+
     def _preload_cppyy_deps(self) -> None:
         """Pre-load cppyy backend dependencies that may be missing from rpath."""
+        self._ensure_cxx17_headers()
         import sys
         _search = []
         if sys.platform == "darwin":
