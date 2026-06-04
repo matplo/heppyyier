@@ -141,13 +141,15 @@ class Loader:
         cppyy's rootcling inherits CPATH when it builds the PCH cache. On HPC
         systems (NERSC Perlmutter etc.) the C++17 headers are not in the default
         search path, so the PCH build fails with 'filesystem file not found' and
-        the process subsequently segfaults. Fix by asking the system compiler for
-        its own include search list and prepending the relevant directories.
+        the process subsequently segfaults.
+
+        Two strategies, tried in order:
+        1. Glob scan of well-known GCC versioned include dirs — works without
+           any compiler in PATH (the common HPC case where g++ needs a module).
+        2. Query g++/c++ for its include search list if strategy 1 finds nothing.
         """
         if not sys.platform.startswith("linux"):
             return
-        import shutil
-        import subprocess
 
         def _has_filesystem(d: pathlib.Path) -> bool:
             return (d / "filesystem").exists()
@@ -156,30 +158,46 @@ class Loader:
         if any(_has_filesystem(p) for p in cpath_dirs):
             return
 
-        cxx = shutil.which("g++") or shutil.which("c++")
-        if cxx is None:
-            return
-        try:
-            r = subprocess.run(
-                [cxx, "-v", "-x", "c++", "-E", "/dev/null"],
-                capture_output=True, text=True, timeout=10,
-            )
-            output = r.stderr
-        except Exception:
-            return
+        import glob as _glob
+        dirs_to_add: list = []
 
-        dirs_to_add = []
-        in_block = False
-        for line in output.splitlines():
-            if "#include <...> search starts here" in line:
-                in_block = True
-                continue
-            if "End of search list" in line:
-                break
-            if in_block:
-                p = pathlib.Path(line.strip())
-                if p.is_dir() and _has_filesystem(p):
-                    dirs_to_add.append(str(p))
+        # Strategy 1: scan well-known GCC versioned include locations.
+        # On RHEL/CentOS/Ubuntu these exist regardless of whether g++ is in PATH.
+        for pattern in (
+            "/usr/include/c++/*/filesystem",
+            "/usr/local/include/c++/*/filesystem",
+        ):
+            matches = sorted(_glob.glob(pattern), reverse=True)  # newest version first
+            for m in matches:
+                d = str(pathlib.Path(m).parent)
+                if d not in dirs_to_add:
+                    dirs_to_add.append(d)
+                break  # one entry per prefix (newest only)
+
+        # Strategy 2: ask the compiler — only needed if strategy 1 found nothing.
+        if not dirs_to_add:
+            import shutil
+            import subprocess
+            cxx = shutil.which("g++") or shutil.which("c++")
+            if cxx:
+                try:
+                    r = subprocess.run(
+                        [cxx, "-v", "-x", "c++", "-E", "/dev/null"],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                    in_block = False
+                    for line in r.stderr.splitlines():
+                        if "#include <...> search starts here" in line:
+                            in_block = True
+                            continue
+                        if "End of search list" in line:
+                            break
+                        if in_block:
+                            p = pathlib.Path(line.strip())
+                            if p.is_dir() and _has_filesystem(p):
+                                dirs_to_add.append(str(p))
+                except Exception:
+                    pass
 
         if dirs_to_add:
             existing = os.environ.get("CPATH", "")
