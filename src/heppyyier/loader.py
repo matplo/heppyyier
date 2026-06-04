@@ -161,18 +161,31 @@ class Loader:
         import glob as _glob
         dirs_to_add: list = []
 
+        def _add_with_arch_subdir(version_dir: pathlib.Path) -> None:
+            """Add version_dir and its arch-specific subdir to dirs_to_add.
+
+            GCC C++ headers need both /usr/include/c++/<N>/ (generic) and
+            /usr/include/c++/<N>/<arch>/ (contains bits/c++config.h which
+            defines _GLIBCXX_NODISCARD and other required GCC macros).
+            Without the arch subdir, GCC headers fail to parse in cling.
+            """
+            vd = str(version_dir)
+            if vd not in dirs_to_add:
+                dirs_to_add.append(vd)
+            for arch_config in sorted(version_dir.glob("*/bits/c++config.h")):
+                arch_dir = str(arch_config.parent.parent)
+                if arch_dir not in dirs_to_add:
+                    dirs_to_add.append(arch_dir)
+
         # Strategy 1: scan well-known GCC versioned include locations.
         # On RHEL/CentOS/Ubuntu these exist regardless of whether g++ is in PATH.
         for pattern in (
             "/usr/include/c++/*/filesystem",
             "/usr/local/include/c++/*/filesystem",
         ):
-            matches = sorted(_glob.glob(pattern), reverse=True)  # newest version first
-            for m in matches:
-                d = str(pathlib.Path(m).parent)
-                if d not in dirs_to_add:
-                    dirs_to_add.append(d)
-                break  # one entry per prefix (newest only)
+            for m in sorted(_glob.glob(pattern), reverse=True):  # newest first
+                _add_with_arch_subdir(pathlib.Path(m).parent)
+                break  # newest version only per prefix
 
         # Strategy 2: ask the compiler — only needed if strategy 1 found nothing.
         if not dirs_to_add:
@@ -195,7 +208,7 @@ class Loader:
                         if in_block:
                             p = pathlib.Path(line.strip())
                             if p.is_dir() and _has_filesystem(p):
-                                dirs_to_add.append(str(p))
+                                _add_with_arch_subdir(p)
                 except Exception:
                     pass
 
