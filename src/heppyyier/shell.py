@@ -98,10 +98,12 @@ def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path) -> pathl
     ]
     if (p / "bin").is_dir():
         lines.append("prepend-path PATH $prefix/bin")
-    if (p / "lib").is_dir():
-        lines.append("prepend-path LD_LIBRARY_PATH $prefix/lib")
-        lines.append("prepend-path DYLD_LIBRARY_PATH $prefix/lib")
-        for sp in sorted((p / "lib").glob("python*/site-packages")):
+    _lib_dir = p / "lib" if (p / "lib").is_dir() else (p / "lib64" if (p / "lib64").is_dir() else None)
+    if _lib_dir is not None:
+        _lib_rel = _lib_dir.relative_to(p)
+        lines.append(f"prepend-path LD_LIBRARY_PATH $prefix/{_lib_rel}")
+        lines.append(f"prepend-path DYLD_LIBRARY_PATH $prefix/{_lib_rel}")
+        for sp in sorted(_lib_dir.glob("python*/site-packages")):
             rel = sp.relative_to(p)
             lines.append(f"prepend-path PYTHONPATH $prefix/{rel}")
     if (p / "include").is_dir():
@@ -120,7 +122,8 @@ def generate_env_scripts(name: str, version: str, prefix: pathlib.Path) -> None:
     prefix_str = str(prefix)
     prefix_escaped = prefix_str.replace("/", "\\/")
 
-    lib_dir = f"{prefix_str}/lib"
+    _lib_path = prefix / "lib" if (prefix / "lib").is_dir() else (prefix / "lib64" if (prefix / "lib64").is_dir() else prefix / "lib")
+    lib_dir = str(_lib_path)
     bin_dir = f"{prefix_str}/bin"
     inc_dir = f"{prefix_str}/include"
     lib_dir_escaped = lib_dir.replace("/", "\\/")

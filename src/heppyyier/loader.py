@@ -6,6 +6,7 @@ import types
 import warnings
 from typing import List, Optional
 
+from .builder import _resolve_lib_dir
 from .exceptions import PackageNotInstalledError
 from .registry import get_registry
 
@@ -121,7 +122,7 @@ class Loader:
             "version": version,
             "prefix": str(prefix),
             "include_dir": str(prefix / "include"),
-            "lib_dir": str(prefix / "lib"),
+            "lib_dir": str(_resolve_lib_dir(prefix)),
             "cppyy_namespace": name,
             "headers": [],
             "libraries": [],

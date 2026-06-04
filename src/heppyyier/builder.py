@@ -17,6 +17,15 @@ from .recipe import Recipe
 from .shell import generate_env_scripts, write_tcl_modulefile
 
 
+def _resolve_lib_dir(prefix: pathlib.Path) -> pathlib.Path:
+    """Return the library directory under prefix, preferring lib64 when it exists and lib does not."""
+    lib = prefix / "lib"
+    lib64 = prefix / "lib64"
+    if not lib.exists() and lib64.exists():
+        return lib64
+    return lib
+
+
 class PackageBuilder:
     def __init__(self, recipe: Recipe, verbose: bool = False):
         self.recipe = recipe
@@ -233,7 +242,7 @@ class PackageBuilder:
                 continue
             dep_prefix = pathlib.Path(dep_rec["prefix"])
             bin_dir = str(dep_prefix / "bin")
-            lib_dir = str(dep_prefix / "lib")
+            lib_dir = str(_resolve_lib_dir(dep_prefix))
             env["PATH"] = bin_dir + os.pathsep + env.get("PATH", "")
             env[lib_path_key] = lib_dir + os.pathsep + env.get(lib_path_key, "")
             env["LIBRARY_PATH"] = lib_dir + os.pathsep + env.get("LIBRARY_PATH", "")
@@ -266,7 +275,7 @@ class PackageBuilder:
                     f"Verification failed: {binary} not found after install"
                 )
         if self.recipe.cppyy_libraries:
-            lib_dir = prefix / "lib"
+            lib_dir = _resolve_lib_dir(prefix)
             if not any(lib_dir.glob("lib*")):
                 raise BuildError(
                     f"Verification failed: no libraries found in {lib_dir}"
@@ -285,7 +294,7 @@ class PackageBuilder:
             "version": version,
             "prefix": str(prefix),
             "include_dir": str(prefix / "include"),
-            "lib_dir": str(prefix / "lib"),
+            "lib_dir": str(_resolve_lib_dir(prefix)),
             "depends_on": self.recipe.depends_on,
             "build_log": str(log_path),
             "recipe_path": recipe_path,
@@ -347,7 +356,7 @@ def register_package(
         "version": ver,
         "prefix": str(prefix_path),
         "include_dir": str(prefix_path / "include"),
-        "lib_dir": str(prefix_path / "lib"),
+        "lib_dir": str(_resolve_lib_dir(prefix_path)),
         "depends_on": recipe.depends_on,
         "build_log": None,
         "recipe_path": stored_recipe_path,

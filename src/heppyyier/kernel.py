@@ -33,8 +33,10 @@ def _build_env(packages_dir: pathlib.Path, packages: dict) -> dict:
         prefix = pathlib.Path(rec["prefix"])
         if (prefix / "bin").is_dir():
             path_parts.append(str(prefix / "bin"))
-        if (prefix / "lib").is_dir():
-            lib_dir = prefix / "lib"
+        # lib/ preferred; fall back to lib64/ (common on Linux distros / HPC)
+        _lib_candidates = [prefix / "lib", prefix / "lib64"]
+        lib_dir = next((d for d in _lib_candidates if d.is_dir()), None)
+        if lib_dir is not None:
             # Don't add a lib dir that ships libcling to DYLD/LD_LIBRARY_PATH.
             # dyld caches the env at process start, so a kernel with ROOT's lib
             # in DYLD_LIBRARY_PATH will have its libCling picked up by pip-cppyy
