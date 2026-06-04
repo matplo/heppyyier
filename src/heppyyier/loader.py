@@ -135,21 +135,27 @@ class Loader:
             "depends_on": [],
         }
 
+    # cling 16 (LLVM 16, shipped with cppyy ≤ 3.x) is compatible with GCC 7–13.
+    # GCC 14 headers use C++23-era attributes and C library assumptions that
+    # cling 16 cannot parse (fenv_t not in global namespace, _GLIBCXX_NODISCARD
+    # on operator new, etc.). Injecting GCC 14 headers breaks the PCH build.
+    _CLING_MAX_COMPATIBLE_GCC = 13
+
     def _ensure_cxx17_headers(self) -> None:
-        """On Linux, add the system C++ include path to CPATH if <filesystem> is missing.
+        """On Linux, add a compatible GCC C++ include path to CPATH if <filesystem> is missing.
 
         cppyy's rootcling inherits CPATH when it builds the PCH cache. On HPC
-        systems (NERSC Perlmutter etc.) the C++17 headers are not in the default
-        search path, so the PCH build fails with 'filesystem file not found' and
-        the process subsequently segfaults.
+        systems (NERSC Perlmutter etc.) the C++17 headers are not in cling's
+        default search path. We inject the newest GCC include dir whose major
+        version is ≤ _CLING_MAX_COMPATIBLE_GCC (currently 13). GCC 14+ headers
+        break cling 16 in several ways and are deliberately excluded.
 
-        Two strategies, tried in order:
-        1. Glob scan of well-known GCC versioned include dirs — works without
-           any compiler in PATH (the common HPC case where g++ needs a module).
-        2. Query g++/c++ for its include search list if strategy 1 finds nothing.
+        If no compatible headers are found, emit a warning so the user knows to
+        load an older GCC module (e.g. 'module load gcc/12').
         """
         if not sys.platform.startswith("linux"):
             return
+        import warnings
 
         def _has_filesystem(d: pathlib.Path) -> bool:
             return (d / "filesystem").exists()
@@ -162,13 +168,7 @@ class Loader:
         dirs_to_add: list = []
 
         def _add_with_arch_subdir(version_dir: pathlib.Path) -> None:
-            """Add version_dir and its arch-specific subdir to dirs_to_add.
-
-            GCC C++ headers need both /usr/include/c++/<N>/ (generic) and
-            /usr/include/c++/<N>/<arch>/ (contains bits/c++config.h which
-            defines _GLIBCXX_NODISCARD and other required GCC macros).
-            Without the arch subdir, GCC headers fail to parse in cling.
-            """
+            """Add version_dir and its arch-specific subdir (bits/c++config.h)."""
             vd = str(version_dir)
             if vd not in dirs_to_add:
                 dirs_to_add.append(vd)
@@ -177,40 +177,66 @@ class Loader:
                 if arch_dir not in dirs_to_add:
                     dirs_to_add.append(arch_dir)
 
+        def _gcc_major(d: pathlib.Path) -> int:
+            try:
+                return int(d.name.split(".")[0])
+            except (ValueError, IndexError):
+                return 0
+
         # Strategy 1: scan well-known GCC versioned include locations.
-        # On RHEL/CentOS/Ubuntu these exist regardless of whether g++ is in PATH.
+        # Only accept versions <= _CLING_MAX_COMPATIBLE_GCC.
         for pattern in (
             "/usr/include/c++/*/filesystem",
             "/usr/local/include/c++/*/filesystem",
         ):
             for m in sorted(_glob.glob(pattern), reverse=True):  # newest first
-                _add_with_arch_subdir(pathlib.Path(m).parent)
-                break  # newest version only per prefix
+                vdir = pathlib.Path(m).parent
+                if _gcc_major(vdir) <= self._CLING_MAX_COMPATIBLE_GCC:
+                    _add_with_arch_subdir(vdir)
+                    break  # newest compatible version per prefix
 
-        # Strategy 2: ask the compiler — only needed if strategy 1 found nothing.
+        # Strategy 2: ask the compiler — only if strategy 1 found nothing.
         if not dirs_to_add:
             import shutil
             import subprocess
             cxx = shutil.which("g++") or shutil.which("c++")
             if cxx:
                 try:
-                    r = subprocess.run(
-                        [cxx, "-v", "-x", "c++", "-E", "/dev/null"],
-                        capture_output=True, text=True, timeout=10,
+                    ver = subprocess.run(
+                        [cxx, "-dumpversion"], capture_output=True, text=True, timeout=5,
                     )
-                    in_block = False
-                    for line in r.stderr.splitlines():
-                        if "#include <...> search starts here" in line:
-                            in_block = True
-                            continue
-                        if "End of search list" in line:
-                            break
-                        if in_block:
-                            p = pathlib.Path(line.strip())
-                            if p.is_dir() and _has_filesystem(p):
-                                _add_with_arch_subdir(p)
+                    cxx_major = int(ver.stdout.strip().split(".")[0])
                 except Exception:
-                    pass
+                    cxx_major = 999
+                if cxx_major <= self._CLING_MAX_COMPATIBLE_GCC:
+                    try:
+                        r = subprocess.run(
+                            [cxx, "-v", "-x", "c++", "-E", "/dev/null"],
+                            capture_output=True, text=True, timeout=10,
+                        )
+                        in_block = False
+                        for line in r.stderr.splitlines():
+                            if "#include <...> search starts here" in line:
+                                in_block = True
+                                continue
+                            if "End of search list" in line:
+                                break
+                            if in_block:
+                                p = pathlib.Path(line.strip())
+                                if p.is_dir() and _has_filesystem(p):
+                                    _add_with_arch_subdir(p)
+                    except Exception:
+                        pass
+
+        if not dirs_to_add:
+            warnings.warn(
+                "[heppyyier] No GCC C++ headers compatible with cppyy's cling were found "
+                f"(need GCC ≤ {self._CLING_MAX_COMPATIBLE_GCC}, only GCC 14+ detected). "
+                "The cppyy PCH build will likely fail. "
+                "On HPC systems load a compatible GCC first: 'module load gcc/12' or similar.",
+                UserWarning, stacklevel=4,
+            )
+            return
 
         if dirs_to_add:
             existing = os.environ.get("CPATH", "")
