@@ -182,11 +182,17 @@ class Loader:
             _root_prefix = os.environ.get("HEPPYYIER_LOADED_ROOT_PREFIX", "")
             if _root_prefix:
                 _root_lib = str(pathlib.Path(_root_prefix) / "lib")
-                for _var in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
-                    _val = os.environ.get(_var, "")
-                    _filtered = ":".join(p for p in _val.split(":") if p and p != _root_lib)
-                    if _filtered != _val:
-                        os.environ[_var] = _filtered
+                # If ROOT's lib is already in sys.path, ROOT's cppyy will be
+                # the one imported — keep DYLD_LIBRARY_PATH intact so ROOT's
+                # own cling can load.  Only strip when pip-cppyy is the target
+                # (ROOT's lib not yet in sys.path).
+                _root_owns_cppyy = any(_root_lib in p for p in sys.path)
+                if not _root_owns_cppyy:
+                    for _var in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
+                        _val = os.environ.get(_var, "")
+                        _filtered = ":".join(p for p in _val.split(":") if p and p != _root_lib)
+                        if _filtered != _val:
+                            os.environ[_var] = _filtered
         try:
             import cppyy
         except ImportError:
