@@ -236,20 +236,23 @@ heppyyier info fastjet       # full details for one package
 ### Loading with heppyyier
 
 ```python
-import heppyyier
+# With the module system (recommended):
+#   module load fastjet pythia8 fjcontrib
+#   python myscript.py
+# then in myscript.py just:
+import fastjet, pythia8, fjcontrib   # autoload hook has already set everything up
 
+# Without the module system (Colab, bare venv):
+import heppyyier
 heppyyier.load("fastjet")
 heppyyier.load("pythia8")
-heppyyier.load("fjcontrib")   # loads fastjet first automatically
+heppyyier.load("fjcontrib")   # heppyyier.load() is a no-op if already loaded
+import fastjet, pythia8, fjcontrib
 
-# Packages are now available as top-level modules via cppyy proxy:
-import fastjet
+# Either way, packages are available as cppyy proxies:
+import cppyy
 jet = fastjet.PseudoJet(1.0, 0.0, 1.0, 1.414)
 print(jet.pt())
-
-# Or directly via cppyy.gbl:
-import cppyy
-cppyy.gbl.fastjet.PseudoJet(1.0, 0.0, 1.0, 1.414)
 ```
 
 ### ROOT — PyROOT via native Python bindings
@@ -291,9 +294,10 @@ that heppyyier uses for FastJet, Pythia8, etc. Because of this:
   # Pattern B — cppyy packages only session (module load fastjet pythia8)
   import fastjet, pythia8
 
-  # Pattern B+ROOT — typical mixed session (module load fastjet pythia8 root)
-  import fastjet, pythia8   # pip-cppyy loads its cling first
-  import ROOT               # ROOT initialises its own cling after; works in ROOT 6.28+
+  # Pattern B+ROOT — typical mixed session (module load root fastjet pythia8)
+  # autoload loads root FIRST → ROOT's cppyy wins → all packages share ROOT's cling
+  import fastjet, pythia8   # loaded via ROOT's cppyy/cling
+  import ROOT               # same cling — works cleanly
   # fill histograms, write ROOT files — just avoid passing C++ objects between clings
 
   # Pattern C — ROOT owns cling, other libs loaded via ROOT's own interface
@@ -310,10 +314,12 @@ and calls `ROOT.gSystem.Load()` for you — no hardcoded paths needed.
 heppyyier emits a `UserWarning` when ROOT and cppyy packages are loaded in the same
 session so the potential conflict is visible at runtime.
 
-> **`module load root` with the auto-load hook:** heppyyier automatically strips ROOT's
-> `lib/` from `DYLD_LIBRARY_PATH`/`LD_LIBRARY_PATH` before the first `import cppyy`.
-> This prevents a startup crash caused by ROOT's `libcling.dylib` shadowing
-> cppyy_backend's own cling when both are module-loaded simultaneously.
+> **`module load root` with the auto-load hook:** when ROOT is among the module-loaded
+> packages, heppyyier loads it first so ROOT's `lib/` is in `sys.path` before the first
+> `import cppyy`. ROOT's bundled cppyy is then used for all packages — one cling for
+> everything. If ROOT is *not* module-loaded, heppyyier strips ROOT's `lib/` from
+> `DYLD_LIBRARY_PATH` before loading pip-cppyy to prevent ROOT's `libcling.dylib` from
+> shadowing cppyy_backend's own cling.
 
 ### LHAPDF — native Python bindings
 

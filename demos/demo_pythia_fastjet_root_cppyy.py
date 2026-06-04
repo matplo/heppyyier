@@ -5,11 +5,11 @@ Load order: cppyy packages first, then import ROOT.
 ROOT is used only for TFile/TTree output; generation and clustering
 stay entirely in pip-cppyy land — no object passing across cling contexts.
 
-NOTE: requires ROOT to be available via the module system before running.
-      ROOT's module adds its lib/ to DYLD_LIBRARY_PATH and sys.path, which
-      the autoload hook picks up so that `import ROOT` works alongside
-      pip-cppyy. Without `module load root` first, ROOT's _facade._finalSetup
-      fails because it cannot find ROOT's C++ namespace via pip-cppyy's cling.
+NOTE: ROOT must be listed first (or alongside) other packages in module load.
+      heppyyier's autoload always loads root first, so ROOT's bundled cppyy
+      becomes sys.modules['cppyy'] before fastjet/pythia8 are loaded — one
+      shared cling for everything. Without root in the environment, import ROOT
+      fails because ROOT's _facade._finalSetup cannot find ROOT's C++ namespace.
 
 Run:
     module load root fastjet pythia8
