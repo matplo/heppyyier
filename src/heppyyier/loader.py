@@ -104,7 +104,13 @@ class Loader:
 
         self._setup_python_paths(record, python_paths, verbose)
         self._setup_cppyy(record, headers, libraries, verbose)
-        self._inject_proxy_module(name, namespace)
+        # Don't shadow a real Python module (e.g. lhapdf SWIG bindings) with a
+        # cppyy proxy. If a proper importable module exists for this name, leave
+        # sys.modules alone — the C++ library has already been loaded above.
+        if name not in sys.modules:
+            import importlib.util
+            if importlib.util.find_spec(name) is None:
+                self._inject_proxy_module(name, namespace)
         self._loaded.add(name)
 
     def _shell_loaded_version(self, name: str) -> Optional[str]:
