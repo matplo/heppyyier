@@ -93,26 +93,6 @@ class Loader:
             deps         = record.get("depends_on", [])
             python_paths = []
 
-        # Warn about ROOT ↔ cppyy cling conflicts
-        _CLING_PACKAGES = {"root"}
-        if name in _CLING_PACKAGES and self._loaded - _CLING_PACKAGES:
-            warnings.warn(
-                f"Loading '{name}' after cppyy-based packages "
-                f"({', '.join(sorted(self._loaded - _CLING_PACKAGES))}) "
-                "is likely to conflict: ROOT bundles its own cling/cppyy. "
-                "Consider importing ROOT before any heppyyier.load() calls, "
-                "or use ROOT's gSystem.Load() to access other libraries.",
-                stacklevel=2,
-            )
-        elif name not in _CLING_PACKAGES and "root" in self._loaded:
-            warnings.warn(
-                f"Loading '{name}' via cppyy after ROOT is already imported "
-                "is likely to conflict: ROOT bundles its own cling/cppyy. "
-                "Consider loading all cppyy packages before importing ROOT, "
-                "or use ROOT's gSystem.Load() to access other libraries.",
-                stacklevel=2,
-            )
-
         # Load dependencies first
         if deps:
             all_packages = reg.all_packages()
