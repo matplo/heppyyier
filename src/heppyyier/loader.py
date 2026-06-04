@@ -158,21 +158,22 @@ class Loader:
         if not headers and not libraries:
             return
         self._preload_cppyy_deps()
-        if "cppyy" not in sys.modules:
-            _root_prefix = os.environ.get("HEPPYYIER_LOADED_ROOT_PREFIX", "")
-            if _root_prefix:
-                _root_lib = str(pathlib.Path(_root_prefix) / "lib")
-                # If ROOT's lib is already in sys.path, ROOT's cppyy will be
-                # the one imported — keep DYLD_LIBRARY_PATH intact so ROOT's
-                # own cling can load.  Only strip when pip-cppyy is the target
-                # (ROOT's lib not yet in sys.path).
-                _root_owns_cppyy = any(_root_lib in p for p in sys.path)
-                if not _root_owns_cppyy:
-                    for _var in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
-                        _val = os.environ.get(_var, "")
-                        _filtered = ":".join(p for p in _val.split(":") if p and p != _root_lib)
-                        if _filtered != _val:
-                            os.environ[_var] = _filtered
+        if "cppyy" not in sys.modules and "ROOT" not in sys.modules:
+            # Strip any DYLD/LD_LIBRARY_PATH entry that contains libcling.
+            # ROOT's lib dir ends up in DYLD_LIBRARY_PATH via both `module load`
+            # and the heyy Jupyter kernel spec. If pip-cppyy loads its own cling
+            # while ROOT's cling is also visible, cppyy_backend crashes in
+            # TThread::Init. Safe to strip here because ROOT is not yet imported.
+            _cling_names = ("libcling.dylib", "libcling.so", "libCling.dylib", "libCling.so")
+            for _var in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
+                _val = os.environ.get(_var, "")
+                _parts = [p for p in _val.split(":") if p]
+                _safe = [
+                    p for p in _parts
+                    if not any((pathlib.Path(p) / n).exists() for n in _cling_names)
+                ]
+                if len(_safe) != len(_parts):
+                    os.environ[_var] = ":".join(_safe)
         try:
             import cppyy
         except ImportError:
