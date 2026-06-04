@@ -1,63 +1,37 @@
 """
-Demo: Pythia8 event generation + FastJet anti-kt jets → ROOT ntuple.
+Demo: Pythia8 event generation + FastJet anti-kt jets → ROOT file.
 
 Generates pp → QCD dijet events, clusters jets with anti-kt R=0.4, and
-writes per-jet and per-event variables into a ROOT TTree saved to a .root file.
+writes per-jet variables into a ROOT TTree using uproot — no ROOT C++
+required, so pip-cppyy (pythia8/fastjet) and ROOT file I/O coexist cleanly.
 
 Run with:
-    module load fastjet pythia8 root   # or heppyyier.load() calls below
     python demo_pythia_fastjet_root.py
 
 Output: pythia_jets.root  (TTree "jets" with per-jet branches)
+Read back with ROOT or uproot:
+    root -l pythia_jets.root
+    jets->Draw("pt>>h(50,0,200)","is_leading==1")
+
+    import uproot
+    with uproot.open("pythia_jets.root") as f:
+        pt = f["jets"]["pt"].array()
 """
 
 import heppyyier
 heppyyier.load("pythia8")
 heppyyier.load("fastjet")
-heppyyier.load("root")
-import ROOT
-heppyyier.gSystem_load("pythia8")   # make Pythia8 symbols available to ROOT's cling
-heppyyier.gSystem_load("fastjet")
 
 import cppyy
 import pythia8
 import fastjet
+import uproot
+import numpy as np
 
 PseudoJetVec = cppyy.gbl.std.vector[fastjet.PseudoJet]
 
 # ---------------------------------------------------------------------------
-# Output ROOT file and TTree
-# ---------------------------------------------------------------------------
-outfile = ROOT.TFile("pythia_jets.root", "RECREATE")
-tree    = ROOT.TTree("jets", "anti-kt R=0.4 jets from Pythia8 pp dijets")
-
-# Per-event branches
-b_event_n    = ROOT.std.vector["int"](1);    b_event_n[0]   = 0
-b_npart      = ROOT.std.vector["int"](1);    b_npart[0]     = 0
-b_njets      = ROOT.std.vector["int"](1);    b_njets[0]     = 0
-
-# Per-jet branches (one entry per jet, event index in b_event_n)
-b_pt         = ROOT.std.vector["float"]()
-b_eta        = ROOT.std.vector["float"]()
-b_phi        = ROOT.std.vector["float"]()
-b_e          = ROOT.std.vector["float"]()
-b_m          = ROOT.std.vector["float"]()
-b_nconst     = ROOT.std.vector["int"]()
-b_is_leading = ROOT.std.vector["int"]()
-
-tree.Branch("event",    b_event_n,    "event/I")
-tree.Branch("npart",    b_npart,      "npart/I")
-tree.Branch("njets",    b_njets,      "njets/I")
-tree.Branch("pt",       b_pt)
-tree.Branch("eta",      b_eta)
-tree.Branch("phi",      b_phi)
-tree.Branch("e",        b_e)
-tree.Branch("m",        b_m)
-tree.Branch("nconst",   b_nconst)
-tree.Branch("is_leading", b_is_leading)
-
-# ---------------------------------------------------------------------------
-# Pythia setup: pp 13 TeV QCD dijets
+# Initialise Pythia: pp 13 TeV QCD dijets, pThat > 20 GeV
 # ---------------------------------------------------------------------------
 pythia = pythia8.Pythia()
 pythia.readString("Beams:eCM = 13000.")
@@ -70,14 +44,24 @@ pythia.init()
 # ---------------------------------------------------------------------------
 # Jet definition: anti-kt R=0.4, pt > 20 GeV
 # ---------------------------------------------------------------------------
-R      = 0.4
-pt_min = 20.0
+R       = 0.4
+pt_min  = 20.0
 jet_def = fastjet.JetDefinition(fastjet.antikt_algorithm, R)
 
 # ---------------------------------------------------------------------------
-# Event loop
+# Event loop — collect per-jet data into flat lists
 # ---------------------------------------------------------------------------
 n_events = 200
+
+all_event      = []
+all_pt         = []
+all_eta        = []
+all_phi        = []
+all_e          = []
+all_m          = []
+all_nconst     = []
+all_is_leading = []
+
 print(f"Generating {n_events} Pythia8 pp → dijets events, anti-kt R={R}, pt > {pt_min} GeV")
 
 for i_event in range(n_events):
@@ -99,41 +83,42 @@ for i_event in range(n_events):
     cs   = fastjet.ClusterSequence(particles, jet_def)
     jets = fastjet.sorted_by_pt(cs.inclusive_jets(pt_min))
 
-    # Clear per-jet vectors for this event
-    b_pt.clear();  b_eta.clear(); b_phi.clear()
-    b_e.clear();   b_m.clear();   b_nconst.clear(); b_is_leading.clear()
-
-    b_event_n[0] = i_event
-    b_npart[0]   = int(particles.size())
-    b_njets[0]   = len(jets)
-
     for j, jet in enumerate(jets):
-        b_pt.push_back(jet.pt())
-        b_eta.push_back(jet.eta())
-        b_phi.push_back(jet.phi())
-        b_e.push_back(jet.e())
-        b_m.push_back(jet.m())
-        b_nconst.push_back(len(cs.constituents(jet)))
-        b_is_leading.push_back(1 if j == 0 else 0)
+        all_event.append(i_event)
+        all_pt.append(jet.pt())
+        all_eta.append(jet.eta())
+        all_phi.append(jet.phi())
+        all_e.append(jet.e())
+        all_m.append(jet.m())
+        all_nconst.append(len(cs.constituents(jet)))
+        all_is_leading.append(1 if j == 0 else 0)
 
-    tree.Fill()
+    if i_event < 3 and jets:
+        print(f"  event {i_event}: {int(particles.size())} particles, {len(jets)} jets")
+        for j, jet in enumerate(jets):
+            print(f"    jet {j}: pt={jet.pt():.1f}  eta={jet.eta():.2f}  phi={jet.phi():.2f}  nconst={all_nconst[-(len(jets)-j)]}")
 
-    if i_event < 3:
-        print(f"  event {i_event}: {b_npart[0]} particles, {b_njets[0]} jets")
-        for j in range(b_njets[0]):
-            print(f"    jet {j}: pt={b_pt[j]:.1f}  eta={b_eta[j]:.2f}  phi={b_phi[j]:.2f}  nconst={b_nconst[j]}")
-
-# ---------------------------------------------------------------------------
-# Save and report
-# ---------------------------------------------------------------------------
 pythia.stat()
 
-n_entries = tree.GetEntries()   # read before Close() frees the TTree
-outfile.Write()
-outfile.Close()
+# ---------------------------------------------------------------------------
+# Write ROOT file with uproot
+# ---------------------------------------------------------------------------
+outfile = "pythia_jets.root"
+with uproot.recreate(outfile) as f:
+    f["jets"] = {
+        "event":      np.array(all_event,      np.int32),
+        "pt":         np.array(all_pt,         np.float32),
+        "eta":        np.array(all_eta,        np.float32),
+        "phi":        np.array(all_phi,        np.float32),
+        "e":          np.array(all_e,          np.float32),
+        "m":          np.array(all_m,          np.float32),
+        "nconst":     np.array(all_nconst,     np.int32),
+        "is_leading": np.array(all_is_leading, np.int32),
+    }
 
-print(f"\nWrote pythia_jets.root  ({n_events} events, {n_entries} tree entries)")
-print("Branches: event, npart, njets, pt[], eta[], phi[], e[], m[], nconst[], is_leading[]")
-print("\nQuick check with ROOT:")
+n_jets = len(all_pt)
+print(f"\nWrote {outfile}  ({n_events} events, {n_jets} jets total)")
+print("Branches: event, pt, eta, phi, e, m, nconst, is_leading")
+print("\nQuick check:")
 print("  root -l pythia_jets.root")
 print('  jets->Draw("pt>>h(50,0,200)","is_leading==1")')
