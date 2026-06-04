@@ -231,9 +231,12 @@ class Loader:
         if not dirs_to_add:
             warnings.warn(
                 "[heppyyier] No GCC C++ headers compatible with cppyy's cling were found "
-                f"(need GCC ≤ {self._CLING_MAX_COMPATIBLE_GCC}, only GCC 14+ detected). "
-                "The cppyy PCH build will likely fail. "
-                "On HPC systems load a compatible GCC first: 'module load gcc/12' or similar.",
+                f"(need GCC ≤ {self._CLING_MAX_COMPATIBLE_GCC}, only newer GCC detected). "
+                "The pip-cppyy PCH build will likely fail. "
+                "Recommended fix on HPC systems with GCC 14+ (e.g. NERSC Perlmutter): "
+                "run 'heyy install root' then load ROOT first in your scripts — "
+                "ROOT's bundled cling is built with the system compiler and is GCC 14 compatible. "
+                "Alternative: load an older GCC module before running Python: 'module load gcc/12'.",
                 UserWarning, stacklevel=4,
             )
             return

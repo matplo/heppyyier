@@ -321,6 +321,32 @@ session so the potential conflict is visible at runtime.
 > `DYLD_LIBRARY_PATH` before loading pip-cppyy to prevent ROOT's `libcling.dylib` from
 > shadowing cppyy_backend's own cling.
 
+> **HPC systems with GCC 14+ (NERSC Perlmutter, etc.):** pip-cppyy ships a
+> pre-built cling 16 that is incompatible with GCC 14 system headers — the PCH
+> build fails and cppyy crashes. **Installing ROOT via heppyyier is the recommended
+> fix**: ROOT builds its own cling with the system's compiler, so on a GCC 14 system
+> ROOT's cling is GCC 14 compatible. Loading ROOT first makes fastjet, pythia8, and
+> all other packages share ROOT's cling instead of pip-cppyy's broken one.
+>
+> ```bash
+> heyy recipe update
+> heyy install root              # ~30 min first time; builds ROOT with system GCC 14
+> ```
+>
+> ```python
+> import heppyyier
+> heppyyier.load('root')         # ROOT's cling — GCC 14 compatible, no PCH issues
+> heppyyier.load('fastjet')
+> heppyyier.load('pythia8')
+> import ROOT, fastjet, pythia8  # all share ROOT's cling
+> ```
+>
+> With `module load`, listing `root` is enough — heppyyier loads it first automatically:
+> ```bash
+> module load root fastjet pythia8
+> python script.py               # fastjet and pythia8 use ROOT's cling
+> ```
+
 ### LHAPDF — native Python bindings
 
 LHAPDF is built with SWIG Python bindings. After `heppyyier install lhapdf` the module
@@ -446,10 +472,10 @@ module list
 
 ### Python auto-load via `module load`
 
-`heyy init` and `heyy generate-modules` both install a `heppyyier_autoload.pth` file
-into the venv's `site-packages`. Python processes `.pth` files at startup, so any
-package loaded with `module load` before starting Python is available to import
-directly — no `heppyyier.load()` call needed:
+`heyy generate-modules` installs a `heppyyier_autoload.pth` file into the venv's
+`site-packages`. Python processes `.pth` files at startup, so any package loaded
+with `module load` before starting Python is available to import directly — no
+`heppyyier.load()` call needed:
 
 ```bash
 eval "$(heyy modules)"            # register modulefiles dir (once, or in ~/.bashrc)
