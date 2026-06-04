@@ -27,13 +27,23 @@ def _build_env(packages_dir: pathlib.Path, packages: dict) -> dict:
     lib_parts: list = []
     pythonpath_parts: list = []
 
+    _cling_names = ("libcling.dylib", "libcling.so", "libCling.dylib", "libCling.so")
+
     for rec in packages.values():
         prefix = pathlib.Path(rec["prefix"])
         if (prefix / "bin").is_dir():
             path_parts.append(str(prefix / "bin"))
         if (prefix / "lib").is_dir():
-            lib_parts.append(str(prefix / "lib"))
-            for sp in sorted((prefix / "lib").glob("python*/site-packages")):
+            lib_dir = prefix / "lib"
+            # Don't add a lib dir that ships libcling to DYLD/LD_LIBRARY_PATH.
+            # dyld caches the env at process start, so a kernel with ROOT's lib
+            # in DYLD_LIBRARY_PATH will have its libCling picked up by pip-cppyy
+            # before any runtime stripping can happen → crash. ROOT's own libs
+            # use @loader_path rpaths and don't need the env var.
+            has_cling = any((lib_dir / n).exists() for n in _cling_names)
+            if not has_cling:
+                lib_parts.append(str(lib_dir))
+            for sp in sorted(lib_dir.glob("python*/site-packages")):
                 pythonpath_parts.append(str(sp))
 
     def _prepend(parts: list, current: str) -> Optional[str]:
