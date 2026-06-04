@@ -248,6 +248,11 @@ class Loader:
             return
 
         if dirs_to_add:
+            # Also add /usr/include so GCC's #include_next <fenv.h> (in <cfenv>)
+            # finds the real system fenv.h instead of cling's stub, which lacks
+            # fenv_t, fexcept_t, etc. needed by <cfenv>'s using-declarations.
+            if "/usr/include" not in dirs_to_add and pathlib.Path("/usr/include").is_dir():
+                dirs_to_add.append("/usr/include")
             existing = os.environ.get("CPATH", "")
             os.environ["CPATH"] = ":".join(dirs_to_add) + (":" + existing if existing else "")
 
