@@ -142,16 +142,18 @@ class Loader:
     _CLING_MAX_COMPATIBLE_GCC = 13
 
     def _ensure_cxx17_headers(self) -> None:
-        """On Linux, ensure cppyy's PCH build uses a compatible GCC with C++17 headers.
+        """On Linux, set CXX to a compatible compiler before cppyy's PCH build.
 
-        cppyy's rootcling inherits both CPATH and the CXX env var when building
-        its PCH cache. On some HPC systems the default 'c++' is very old (e.g.
-        GCC 7.5 on SUSE/NERSC) and has no <filesystem>, while 'g++' is a newer
-        compatible version (GCC 13). We query g++ first, set CXX to it, and add
-        its include paths to CPATH so rootcling uses the right compiler.
+        The binary pip-cppyy wheel ships cling 16 built on manylinux2014. On
+        SUSE/RHEL systems with an old default 'c++' (GCC 7.5) and a newer 'g++'
+        (GCC 13), setting CXX=g++ ensures cling/rootcling uses the right compiler.
 
-        Falls back to a glob scan of /usr/include/c++/ for systems where no
-        compiler is in PATH (module-load required HPC nodes).
+        CPATH manipulation is intentionally NOT done here. On SUSE Linux, adding
+        GCC 13 C++ headers to CPATH breaks cling's #include_next chain for C
+        compatibility headers (cfenv, fenv.h etc.) — the binary cling wheel does
+        not know the GCC 13 toolchain layout. The only reliable fix for the
+        binary wheel on SUSE is 'heyy install cppyy --force' (builds cling from
+        source with GCC 13, which teaches cling the exact toolchain layout).
         """
         if not sys.platform.startswith("linux"):
             return
@@ -160,101 +162,45 @@ class Loader:
         import subprocess
         import warnings
 
-        def _has_filesystem(d: pathlib.Path) -> bool:
-            return (d / "filesystem").exists()
-
-        cpath_dirs = [pathlib.Path(p) for p in os.environ.get("CPATH", "").split(":") if p]
-        if any(_has_filesystem(p) for p in cpath_dirs):
-            return
-
-        dirs_to_add: list = []
-
-        def _add_with_arch_subdir(version_dir: pathlib.Path) -> None:
-            vd = str(version_dir)
-            if vd not in dirs_to_add:
-                dirs_to_add.append(vd)
-            for arch_config in sorted(version_dir.glob("*/bits/c++config.h")):
-                arch_dir = str(arch_config.parent.parent)
-                if arch_dir not in dirs_to_add:
-                    dirs_to_add.append(arch_dir)
-
-        # Strategy 1 (primary): query compilers directly.
-        # Prefer g++ over c++ — on SUSE/RHEL the system 'c++' may be very old
-        # (e.g. GCC 7.5 with no C++17 <filesystem>) while 'g++' is newer.
-        # Set CXX so cling/rootcling uses the same compiler for its PCH build.
-        for cxx_candidate in ("g++", "c++"):
-            cxx = shutil.which(cxx_candidate)
-            if not cxx:
-                continue
-            try:
-                ver = subprocess.run(
-                    [cxx, "-dumpversion"], capture_output=True, text=True, timeout=5,
-                )
-                cxx_major = int(ver.stdout.strip().split(".")[0])
-            except Exception:
-                continue
-            if cxx_major > self._CLING_MAX_COMPATIBLE_GCC:
-                continue  # too new for this cling version (GCC 14+ breaks cling 16)
-            try:
-                r = subprocess.run(
-                    [cxx, "-v", "-x", "c++", "-E", "/dev/null"],
-                    capture_output=True, text=True, timeout=10,
-                )
-                in_block = False
-                for line in r.stderr.splitlines():
-                    if "#include <...> search starts here" in line:
-                        in_block = True
-                        continue
-                    if "End of search list" in line:
-                        break
-                    if in_block:
-                        p = pathlib.Path(line.strip())
-                        if p.is_dir() and _has_filesystem(p):
-                            _add_with_arch_subdir(p)
-            except Exception:
-                continue
-            if dirs_to_add:
-                # Tell cling/rootcling to use this compiler for its PCH build
-                if "CXX" not in os.environ:
+        # Set CXX=g++ if it's a newer compatible version than the default c++.
+        # This helps both the source build recipe and any system where rootcling
+        # respects the CXX env var.
+        if "CXX" not in os.environ:
+            for cxx_candidate in ("g++", "c++"):
+                cxx = shutil.which(cxx_candidate)
+                if not cxx:
+                    continue
+                try:
+                    ver = subprocess.run(
+                        [cxx, "-dumpversion"], capture_output=True, text=True, timeout=5,
+                    )
+                    cxx_major = int(ver.stdout.strip().split(".")[0])
+                except Exception:
+                    continue
+                if cxx_major <= self._CLING_MAX_COMPATIBLE_GCC:
                     os.environ["CXX"] = cxx
-                break
+                    break
 
-        # Strategy 2 (fallback): glob well-known GCC versioned include paths.
-        # Useful on nodes where no compiler is in PATH without a module load.
-        if not dirs_to_add:
-            for pattern in (
-                "/usr/include/c++/*/filesystem",
-                "/usr/local/include/c++/*/filesystem",
-            ):
-                for m in sorted(_glob.glob(pattern), reverse=True):
-                    vdir = pathlib.Path(m).parent
-                    try:
-                        gcc_major = int(vdir.name.split(".")[0])
-                    except (ValueError, IndexError):
-                        continue
-                    if gcc_major <= self._CLING_MAX_COMPATIBLE_GCC:
-                        _add_with_arch_subdir(vdir)
-                        break
-
-        if not dirs_to_add:
+        # Check whether the binary wheel PCH is likely to fail and warn.
+        # We do NOT inject CPATH — on SUSE/RHEL that breaks more than it fixes.
+        has_filesystem = bool(
+            _glob.glob("/usr/include/c++/*/filesystem")
+            or _glob.glob("/usr/local/include/c++/*/filesystem")
+            or any(
+                (pathlib.Path(p) / "filesystem").exists()
+                for p in os.environ.get("CPATH", "").split(":")
+                if p
+            )
+        )
+        if not has_filesystem:
             warnings.warn(
-                "[heppyyier] No C++ headers compatible with cppyy's cling were found. "
-                f"Need GCC ≤ {self._CLING_MAX_COMPATIBLE_GCC} with <filesystem>. "
-                "Options: 'heyy install cppyy' (builds cling from source), "
-                "'heyy install root' (uses ROOT's native cling), "
-                "or load a compatible GCC module: 'module load gcc/13'.",
+                "[heppyyier] pip-cppyy's PCH build will likely fail on this system. "
+                "The binary cling wheel is incompatible with the system GCC include layout. "
+                "Fix: 'heyy install cppyy --force' builds cling from source with the "
+                f"system g++ (GCC ≤ {self._CLING_MAX_COMPATIBLE_GCC}), which resolves the "
+                "include chain. Alternative: 'heyy install root' (ROOT's native cling).",
                 UserWarning, stacklevel=4,
             )
-            return
-
-        if dirs_to_add:
-            # Also add /usr/include so GCC's #include_next <fenv.h> (in <cfenv>)
-            # finds the real system fenv.h instead of cling's stub, which lacks
-            # fenv_t, fexcept_t, etc. needed by <cfenv>'s using-declarations.
-            if "/usr/include" not in dirs_to_add and pathlib.Path("/usr/include").is_dir():
-                dirs_to_add.append("/usr/include")
-            existing = os.environ.get("CPATH", "")
-            os.environ["CPATH"] = ":".join(dirs_to_add) + (":" + existing if existing else "")
 
     def _preload_cppyy_deps(self) -> None:
         """Pre-load cppyy backend dependencies that may be missing from rpath."""
