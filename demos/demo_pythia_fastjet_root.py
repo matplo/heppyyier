@@ -18,6 +18,9 @@ Read back with ROOT or uproot:
         pt = f["jets"]["pt"].array()
 """
 
+# heppyyier.load() is a no-op if the package was already loaded by the
+# autoload hook (i.e. you ran: module load fastjet pythia8 beforehand).
+# Keep these lines so the script is self-contained without module load.
 import heppyyier
 heppyyier.load("pythia8")
 heppyyier.load("fastjet")
