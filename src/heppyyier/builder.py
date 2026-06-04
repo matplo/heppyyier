@@ -323,6 +323,12 @@ def build_package(
         )
         return existing
 
+    # Auto-install any depends_on packages that are not yet in the registry.
+    for dep in recipe.depends_on:
+        if not reg.is_installed(dep):
+            print(f"[{name}] Installing dependency: {dep}")
+            build_package(dep, verbose=verbose)
+
     builder = PackageBuilder(recipe, verbose=verbose)
     record = builder.build(version=version or recipe.version, force=force, redownload=redownload)
     reg.register(recipe.name, record)
