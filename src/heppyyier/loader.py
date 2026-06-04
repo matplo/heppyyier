@@ -142,19 +142,22 @@ class Loader:
     _CLING_MAX_COMPATIBLE_GCC = 13
 
     def _ensure_cxx17_headers(self) -> None:
-        """On Linux, add a compatible GCC C++ include path to CPATH if <filesystem> is missing.
+        """On Linux, ensure cppyy's PCH build uses a compatible GCC with C++17 headers.
 
-        cppyy's rootcling inherits CPATH when it builds the PCH cache. On HPC
-        systems (NERSC Perlmutter etc.) the C++17 headers are not in cling's
-        default search path. We inject the newest GCC include dir whose major
-        version is ≤ _CLING_MAX_COMPATIBLE_GCC (currently 13). GCC 14+ headers
-        break cling 16 in several ways and are deliberately excluded.
+        cppyy's rootcling inherits both CPATH and the CXX env var when building
+        its PCH cache. On some HPC systems the default 'c++' is very old (e.g.
+        GCC 7.5 on SUSE/NERSC) and has no <filesystem>, while 'g++' is a newer
+        compatible version (GCC 13). We query g++ first, set CXX to it, and add
+        its include paths to CPATH so rootcling uses the right compiler.
 
-        If no compatible headers are found, emit a warning so the user knows to
-        load an older GCC module (e.g. 'module load gcc/12').
+        Falls back to a glob scan of /usr/include/c++/ for systems where no
+        compiler is in PATH (module-load required HPC nodes).
         """
         if not sys.platform.startswith("linux"):
             return
+        import glob as _glob
+        import shutil
+        import subprocess
         import warnings
 
         def _has_filesystem(d: pathlib.Path) -> bool:
@@ -164,11 +167,9 @@ class Loader:
         if any(_has_filesystem(p) for p in cpath_dirs):
             return
 
-        import glob as _glob
         dirs_to_add: list = []
 
         def _add_with_arch_subdir(version_dir: pathlib.Path) -> None:
-            """Add version_dir and its arch-specific subdir (bits/c++config.h)."""
             vd = str(version_dir)
             if vd not in dirs_to_add:
                 dirs_to_add.append(vd)
@@ -177,66 +178,71 @@ class Loader:
                 if arch_dir not in dirs_to_add:
                     dirs_to_add.append(arch_dir)
 
-        def _gcc_major(d: pathlib.Path) -> int:
+        # Strategy 1 (primary): query compilers directly.
+        # Prefer g++ over c++ — on SUSE/RHEL the system 'c++' may be very old
+        # (e.g. GCC 7.5 with no C++17 <filesystem>) while 'g++' is newer.
+        # Set CXX so cling/rootcling uses the same compiler for its PCH build.
+        for cxx_candidate in ("g++", "c++"):
+            cxx = shutil.which(cxx_candidate)
+            if not cxx:
+                continue
             try:
-                return int(d.name.split(".")[0])
-            except (ValueError, IndexError):
-                return 0
+                ver = subprocess.run(
+                    [cxx, "-dumpversion"], capture_output=True, text=True, timeout=5,
+                )
+                cxx_major = int(ver.stdout.strip().split(".")[0])
+            except Exception:
+                continue
+            if cxx_major > self._CLING_MAX_COMPATIBLE_GCC:
+                continue  # too new for this cling version (GCC 14+ breaks cling 16)
+            try:
+                r = subprocess.run(
+                    [cxx, "-v", "-x", "c++", "-E", "/dev/null"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                in_block = False
+                for line in r.stderr.splitlines():
+                    if "#include <...> search starts here" in line:
+                        in_block = True
+                        continue
+                    if "End of search list" in line:
+                        break
+                    if in_block:
+                        p = pathlib.Path(line.strip())
+                        if p.is_dir() and _has_filesystem(p):
+                            _add_with_arch_subdir(p)
+            except Exception:
+                continue
+            if dirs_to_add:
+                # Tell cling/rootcling to use this compiler for its PCH build
+                if "CXX" not in os.environ:
+                    os.environ["CXX"] = cxx
+                break
 
-        # Strategy 1: scan well-known GCC versioned include locations.
-        # Only accept versions <= _CLING_MAX_COMPATIBLE_GCC.
-        for pattern in (
-            "/usr/include/c++/*/filesystem",
-            "/usr/local/include/c++/*/filesystem",
-        ):
-            for m in sorted(_glob.glob(pattern), reverse=True):  # newest first
-                vdir = pathlib.Path(m).parent
-                if _gcc_major(vdir) <= self._CLING_MAX_COMPATIBLE_GCC:
-                    _add_with_arch_subdir(vdir)
-                    break  # newest compatible version per prefix
-
-        # Strategy 2: ask the compiler — only if strategy 1 found nothing.
+        # Strategy 2 (fallback): glob well-known GCC versioned include paths.
+        # Useful on nodes where no compiler is in PATH without a module load.
         if not dirs_to_add:
-            import shutil
-            import subprocess
-            cxx = shutil.which("g++") or shutil.which("c++")
-            if cxx:
-                try:
-                    ver = subprocess.run(
-                        [cxx, "-dumpversion"], capture_output=True, text=True, timeout=5,
-                    )
-                    cxx_major = int(ver.stdout.strip().split(".")[0])
-                except Exception:
-                    cxx_major = 999
-                if cxx_major <= self._CLING_MAX_COMPATIBLE_GCC:
+            for pattern in (
+                "/usr/include/c++/*/filesystem",
+                "/usr/local/include/c++/*/filesystem",
+            ):
+                for m in sorted(_glob.glob(pattern), reverse=True):
+                    vdir = pathlib.Path(m).parent
                     try:
-                        r = subprocess.run(
-                            [cxx, "-v", "-x", "c++", "-E", "/dev/null"],
-                            capture_output=True, text=True, timeout=10,
-                        )
-                        in_block = False
-                        for line in r.stderr.splitlines():
-                            if "#include <...> search starts here" in line:
-                                in_block = True
-                                continue
-                            if "End of search list" in line:
-                                break
-                            if in_block:
-                                p = pathlib.Path(line.strip())
-                                if p.is_dir() and _has_filesystem(p):
-                                    _add_with_arch_subdir(p)
-                    except Exception:
-                        pass
+                        gcc_major = int(vdir.name.split(".")[0])
+                    except (ValueError, IndexError):
+                        continue
+                    if gcc_major <= self._CLING_MAX_COMPATIBLE_GCC:
+                        _add_with_arch_subdir(vdir)
+                        break
 
         if not dirs_to_add:
             warnings.warn(
-                "[heppyyier] No GCC C++ headers compatible with cppyy's cling were found "
-                f"(need GCC ≤ {self._CLING_MAX_COMPATIBLE_GCC}, only newer GCC detected). "
-                "The pip-cppyy PCH build will likely fail. "
-                "Recommended fix on HPC systems with GCC 14+ (e.g. NERSC Perlmutter): "
-                "run 'heyy install root' then load ROOT first in your scripts — "
-                "ROOT's bundled cling is built with the system compiler and is GCC 14 compatible. "
-                "Alternative: load an older GCC module before running Python: 'module load gcc/12'.",
+                "[heppyyier] No C++ headers compatible with cppyy's cling were found. "
+                f"Need GCC ≤ {self._CLING_MAX_COMPATIBLE_GCC} with <filesystem>. "
+                "Options: 'heyy install cppyy' (builds cling from source), "
+                "'heyy install root' (uses ROOT's native cling), "
+                "or load a compatible GCC module: 'module load gcc/13'.",
                 UserWarning, stacklevel=4,
             )
             return
