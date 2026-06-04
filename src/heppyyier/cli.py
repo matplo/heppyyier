@@ -274,6 +274,7 @@ _DEMO_FILES = [
     "demo_pythia_fastjet_root_cppyy.py",
     "demo_fjcontrib.ipynb",
     "demo_pythia_fastjet.ipynb",
+    "demo_pythia_fastjet_root.ipynb",
     "demo_softdrop_splitting.ipynb",
 ]
 
