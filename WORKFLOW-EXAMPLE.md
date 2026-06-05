@@ -113,11 +113,17 @@ heppyyier.load("pythia8")
 import fastjet, pythia8
 ```
 
-### 2b. Shared Drive (course / team)
+### 2b. Shared folder (course / team)
 
-An instructor or admin pre-builds packages to a shared Drive folder.
-Students set that as the read-only system base and write any personal
-additions to a local (session-only) directory.
+An instructor or admin pre-builds packages to a Google Drive folder and shares
+it. `HEPPYYIER_SYSTEM_PACKAGES_DIR` is just a filesystem path — it can point at:
+
+- A folder shared with you (add a shortcut so it appears under `MyDrive/`)
+- A Team Drive / Shared Drive
+- Any other readable path on the Colab instance
+
+Students set the shared folder as the read-only system base and write any
+personal additions to a local (session-only) path.
 
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
@@ -127,19 +133,19 @@ from google.colab import drive
 drive.mount('/content/drive')
 
 import os
-# Shared pre-built packages from instructor (read-only)
+# Shared pre-built packages — adjust path to wherever the instructor shared the folder
 os.environ["HEPPYYIER_SYSTEM_PACKAGES_DIR"] = \
-    "/content/drive/Shareddrives/HEPcourse/hep_packages"
-# Personal writable store — local to this session
+    "/content/drive/MyDrive/HEPcourse_packages"   # shared folder shortcut in My Drive
+# Personal writable store — local to this session (lost on runtime reset, that's fine)
 os.environ["HEPPYYIER_PACKAGES_DIR"] = "/content/hep_packages_user"
 
 # ── Cell 2: instructor only — build once and share ─────────────────────────
-# export HEPPYYIER_PACKAGES_DIR=/content/drive/Shareddrives/HEPcourse/hep_packages
+# import os; os.environ["HEPPYYIER_PACKAGES_DIR"] = "/content/drive/MyDrive/HEPcourse_packages"
 # !heyy install fastjet hepmc3 lhapdf pythia8 fjcontrib --verbose
 
 # ── Cell 3: every session (students) ───────────────────────────────────────
 import heppyyier
-heppyyier.load("fastjet")   # resolves from shared Drive — no build needed
+heppyyier.load("fastjet")   # resolves from shared folder — no build needed
 heppyyier.load("pythia8")
 import fastjet, pythia8
 ```
