@@ -6,6 +6,9 @@ installs required.
 
 Supported packages out of the box: **FastJet**, **Pythia8**, **HepMC3**, **fjcontrib**, **LHAPDF6**.
 
+> **Step-by-step examples for common setups** (local, Colab, HPC, Jupyter, ROOT, shared packages):
+> [WORKFLOW-EXAMPLE.md](WORKFLOW-EXAMPLE.md)
+
 ---
 
 ## Requirements
