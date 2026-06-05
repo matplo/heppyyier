@@ -10,7 +10,7 @@ requires-python = ">=3.9"
 dependencies = [
     "cppyy>=3.1",
     "click>=8.1",
-    "requests>=2.31",
+    "requests>=2.31,<2.34",
     "tqdm>=4.66",
     "pyyaml>=6.0",
     "tomli>=2.0; python_version < '3.11'",
