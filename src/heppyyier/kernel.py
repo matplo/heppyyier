@@ -47,6 +47,11 @@ def _build_env(packages_dir: pathlib.Path, packages: dict) -> dict:
                 lib_parts.append(str(lib_dir))
             for sp in sorted(lib_dir.glob("python*/site-packages")):
                 pythonpath_parts.append(str(sp))
+        else:
+            # --target layout: pip install --target {prefix} puts packages
+            # directly in the prefix (no lib/ subdir). Detect by .dist-info dirs.
+            if any(prefix.glob("*.dist-info")):
+                pythonpath_parts.append(str(prefix))
 
     def _prepend(parts: list, current: str) -> Optional[str]:
         if not parts:
@@ -88,7 +93,7 @@ def install_kernel(
     """
     _check_deps()
 
-    from .config import get_packages_dir
+    from .config import get_packages_dir, get_system_packages_dirs
     from .registry import get_registry
 
     packages = get_registry().all_packages()
@@ -102,6 +107,12 @@ def install_kernel(
         display_name = f"HEP ({pkg_list})"
 
     env = _build_env(packages_dir, packages)
+
+    # Preserve the system packages dir so the kernel's registry can find
+    # shared/admin-installed packages at runtime (two-tier registry lookup).
+    sys_dirs = get_system_packages_dirs()
+    if sys_dirs:
+        env["HEPPYYIER_SYSTEM_PACKAGES_DIR"] = os.pathsep.join(str(d) for d in sys_dirs)
 
     kernel_spec = {
         "argv": [sys.executable, "-m", "ipykernel_launcher", "-f", "{connection_file}"],
