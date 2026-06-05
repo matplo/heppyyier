@@ -43,7 +43,7 @@ use `henv .` for convenience, but any `henv` call can be replaced with:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install git+https://github.com/matplo/heppyyier.git
+pip install "git+https://github.com/matplo/heppyyier.git" cppyy
 heyy init
 ```
 
@@ -94,7 +94,9 @@ You own the Drive folder — read and write go to the same place.
 
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
-!pip install git+https://github.com/matplo/heppyyier.git -q
+# cppyy is no longer a bundled heppyyier dep — install it explicitly here.
+# The binary wheel works fine on Colab.
+!pip install "git+https://github.com/matplo/heppyyier.git" cppyy -q
 
 from google.colab import drive
 drive.mount('/content/drive')
@@ -132,8 +134,8 @@ personal additions to a local (session-only) path.
 
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
-# cppyy is a heppyyier dependency — installed automatically with heppyyier.
-!pip install git+https://github.com/matplo/heppyyier.git -q
+# cppyy binary wheel works fine on Colab — install explicitly alongside heppyyier.
+!pip install "git+https://github.com/matplo/heppyyier.git" cppyy -q
 
 # Mount Drive FIRST — heppyyier reads headers and registry from Drive at load time.
 # If Drive isn't mounted before heppyyier.load(), C++ headers can't be included
