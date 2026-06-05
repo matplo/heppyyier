@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "heppyyier"
-version = "0.1.1"
+version = "0.1.2"
 description = "HEP C++ package manager with cppyy dynamic bindings"
 requires-python = ">=3.9"
 dependencies = [
