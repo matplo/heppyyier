@@ -125,10 +125,16 @@ it. `HEPPYYIER_SYSTEM_PACKAGES_DIR` is just a filesystem path — it can point a
 Students set the shared folder as the read-only system base and write any
 personal additions to a local (session-only) path.
 
+> **Important:** mount Google Drive **before** calling `heppyyier.load()`.
+> The package registry and C++ headers are read from Drive at load time — if
+> Drive isn't mounted yet, headers can't be included and the proxy module will
+> be created but attribute access will fail silently.
+
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
 !pip install git+https://github.com/matplo/heppyyier.git -q
 
+# Mount Drive FIRST — heppyyier reads headers and registry from Drive at load time
 from google.colab import drive
 drive.mount('/content/drive')
 
@@ -140,12 +146,20 @@ os.environ["HEPPYYIER_SYSTEM_PACKAGES_DIR"] = \
 os.environ["HEPPYYIER_PACKAGES_DIR"] = "/content/hep_packages_user"
 
 # ── Cell 2: instructor only — build once and share ─────────────────────────
-# import os; os.environ["HEPPYYIER_PACKAGES_DIR"] = "/content/drive/MyDrive/HEPcourse_packages"
+# Run this cell once from the instructor's account, then comment it out.
+# Uses the new --target recipe so cppyy lands in the shared prefix (not the venv).
+# import os
+# os.environ["HEPPYYIER_PACKAGES_DIR"] = "/content/drive/MyDrive/HEPcourse_packages"
+# !heyy upgrade && heyy recipe update
 # !heyy install fastjet hepmc3 lhapdf pythia8 fjcontrib --verbose
+# !heyy install cppyy --force   # builds cppyy into the shared prefix via --target
+# !heyy generate-modules
 
 # ── Cell 3: every session (students) ───────────────────────────────────────
 import heppyyier
-heppyyier.load("fastjet")   # resolves from shared folder — no build needed
+# heppyyier finds cppyy in the system registry and adds its prefix to sys.path
+# automatically — no 'pip install cppyy' needed once the instructor has rebuilt.
+heppyyier.load("fastjet")
 heppyyier.load("pythia8")
 import fastjet, pythia8
 ```
