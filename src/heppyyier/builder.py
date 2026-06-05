@@ -36,6 +36,15 @@ class PackageBuilder:
     def build(self, version: Optional[str] = None, force: bool = False, redownload: bool = False) -> dict:
         version = version or self.recipe.version
         prefix = (self._build_dir / self.recipe.name / version).resolve()
+
+        # On --force, wipe the install prefix so stale files from a previous
+        # partial build can't interfere. Critical for FUSE-mounted filesystems
+        # (e.g. Google Drive) where a failed 'make install' can leave corrupted
+        # .so files that break libtool's relink step on the next attempt.
+        if force and prefix.exists():
+            print(f"Removing stale prefix: {prefix}")
+            shutil.rmtree(prefix)
+
         prefix.mkdir(parents=True, exist_ok=True)
         self._log_dir.mkdir(parents=True, exist_ok=True)
 
