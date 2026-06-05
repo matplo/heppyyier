@@ -132,8 +132,8 @@ personal additions to a local (session-only) path.
 
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
-# cppyy binary wheel works fine on Colab — fast install, no source build needed.
-!pip install git+https://github.com/matplo/heppyyier.git cppyy -q
+# cppyy is a heppyyier dependency — installed automatically with heppyyier.
+!pip install git+https://github.com/matplo/heppyyier.git -q
 
 # Mount Drive FIRST — heppyyier reads headers and registry from Drive at load time.
 # If Drive isn't mounted before heppyyier.load(), C++ headers can't be included
