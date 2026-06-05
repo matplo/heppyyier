@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "HEP C++ package manager with cppyy dynamic bindings"
 requires-python = ">=3.9"
 dependencies = [
+    "cppyy>=3.1",
     "numpy>=1.24",
     "pandas>=2.0",
     "click>=8.1",
@@ -16,9 +17,6 @@ dependencies = [
     "pyyaml>=6.0",
     "tomli>=2.0; python_version < '3.11'",
 ]
-
-[project.optional-dependencies]
-cppyy = ["cppyy>=3.1"]
 
 [project.scripts]
 heppyyier = "heppyyier.cli:main"

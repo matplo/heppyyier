@@ -43,7 +43,7 @@ use `henv .` for convenience, but any `henv` call can be replaced with:
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install "git+https://github.com/matplo/heppyyier.git" cppyy
+pip install git+https://github.com/matplo/heppyyier.git
 heyy init
 ```
 
@@ -94,9 +94,7 @@ You own the Drive folder — read and write go to the same place.
 
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
-# cppyy is no longer a bundled heppyyier dep — install it explicitly here.
-# The binary wheel works fine on Colab.
-!pip install "git+https://github.com/matplo/heppyyier.git" cppyy -q
+!pip install git+https://github.com/matplo/heppyyier.git -q
 
 from google.colab import drive
 drive.mount('/content/drive')
@@ -134,8 +132,7 @@ personal additions to a local (session-only) path.
 
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
-# cppyy binary wheel works fine on Colab — install explicitly alongside heppyyier.
-!pip install "git+https://github.com/matplo/heppyyier.git" cppyy -q
+!pip install git+https://github.com/matplo/heppyyier.git -q
 
 # Mount Drive FIRST — heppyyier reads headers and registry from Drive at load time.
 # If Drive isn't mounted before heppyyier.load(), C++ headers can't be included
@@ -222,8 +219,12 @@ heyy generate-modules            # write modulefiles into the same tree
 # HEPPYYIER_SYSTEM_PACKAGES_DIR = shared read-only base (admin's packages)
 # HEPPYYIER_PACKAGES_DIR        = user's own writable store (default: inside venv)
 
-# First time — specify the shared dir explicitly:
-henv --system-packages-dir /global/cfs/cdirs/myproject/hep_packages .
+# First time — specify the shared dir explicitly.
+# --no-cppyy removes the binary pip-cppyy wheel; the system source-built cppyy
+# is picked up automatically via HEPPYYIER_SYSTEM_PACKAGES_DIR.
+# If the admin has already built cppyy with 'heyy install cppyy --force',
+# --no-cppyy is applied automatically (no flag needed).
+henv --system-packages-dir /global/cfs/cdirs/myproject/hep_packages --no-cppyy .
 # heyy list         shows shared packages
 # heyy install pkg  writes to .venv/heppyyier_packages/ — never touches the shared dir
 module load fastjet pythia8
