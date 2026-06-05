@@ -284,8 +284,7 @@ _DEMO_FILES = [
 @click.option("--overwrite", is_flag=True, help="Overwrite existing files.")
 def demos(dest, overwrite):
     """Download demo scripts from GitHub to the current directory."""
-    import urllib.error
-    import urllib.request
+    import requests
     dest_path = pathlib.Path(dest).resolve()
     dest_path.mkdir(parents=True, exist_ok=True)
     for fname in _DEMO_FILES:
@@ -294,12 +293,12 @@ def demos(dest, overwrite):
             click.echo(f"  skip  {fname}  (already exists, use --overwrite)")
             continue
         url = f"{_DEMOS_BASE}/{fname}"
-        try:
-            with urllib.request.urlopen(url, timeout=30) as r:
-                out.write_bytes(r.read())
+        r = requests.get(url, timeout=30)
+        if r.status_code == 200:
+            out.write_bytes(r.content)
             click.echo(f"  ok    {fname}")
-        except urllib.error.HTTPError as e:
-            click.echo(f"  fail  {fname}  (HTTP {e.code})", err=True)
+        else:
+            click.echo(f"  fail  {fname}  (HTTP {r.status_code})", err=True)
     click.echo(f"\nDemos written to: {dest_path}")
     click.echo("Run: python demo_fastjet.py")
 
