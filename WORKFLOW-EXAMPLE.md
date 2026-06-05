@@ -89,7 +89,7 @@ heyy install cppyy --force        # builds cling from source with system g++ (GC
 
 # Generate Lmod/TCL modulefiles:
 heyy generate-modules
-eval "$(heyy modules)"            # register modulefiles dir with Lmod
+# henv already ran 'eval "$(heyy modules)"' on subshell entry — module load works immediately
 
 # Load and use:
 module load fastjet pythia8
@@ -120,15 +120,17 @@ heyy generate-modules            # write modulefiles into the same tree
 ```bash
 export HEPPYYIER_PACKAGES_DIR=/global/cfs/cdirs/myproject/hep_packages
 heyy kernel install              # personal kernel.json pointing at shared packages
-eval "$(heyy modules)"           # register shared modulefiles with Lmod
+
+# With henv — module use is registered automatically on subshell entry:
+henv --packages-dir /global/cfs/cdirs/myproject/hep_packages .
 module load fastjet pythia8
 python analysis.py
-```
 
-Or with henv:
-```bash
-henv --packages-dir /global/cfs/cdirs/myproject/hep_packages .
-# subshell has HEPPYYIER_PACKAGES_DIR set; module load just works
+# Without henv (plain venv activation) — register modulefiles dir manually:
+source .venv/bin/activate
+eval "$(heyy modules)"
+module load fastjet pythia8
+python analysis.py
 ```
 
 ---
