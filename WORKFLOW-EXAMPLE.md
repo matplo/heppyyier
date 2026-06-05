@@ -4,6 +4,51 @@ Quick-reference for the most common setups. Jump to the section that matches you
 
 ---
 
+## Prerequisites
+
+### heppyyier
+
+Install into any Python virtual environment:
+
+```bash
+pip install git+https://github.com/matplo/heppyyier.git
+```
+
+### henv (recommended)
+
+[henv](https://github.com/matplo/henv) is a single-script virtual environment manager
+designed for heppyyier workflows. It creates and activates venvs, installs heppyyier
+on first use, wires up tab completion, regenerates modulefiles, and handles
+`HEPPYYIER_PACKAGES_DIR` / `HEPPYYIER_SYSTEM_PACKAGES_DIR` automatically.
+
+Install once (requires `curl`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/matplo/henv/main/henv | bash -s -- --install
+```
+
+This places `henv` in `~/.local/bin/`. Make sure that directory is in your `PATH`:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # add to ~/.bashrc or ~/.zshrc
+```
+
+Verify:
+```bash
+henv --version
+```
+
+henv is optional — all heppyyier commands work in any plain venv. The workflows below
+use `henv .` for convenience, but any `henv` call can be replaced with:
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install git+https://github.com/matplo/heppyyier.git
+heyy init
+```
+
+---
+
 ## 1. Local development (macOS / Linux laptop)
 
 The default setup — packages live inside your venv, nothing shared.
