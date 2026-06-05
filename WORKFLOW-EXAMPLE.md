@@ -206,12 +206,26 @@ heyy generate-modules            # write modulefiles into the same tree
 # HEPPYYIER_SYSTEM_PACKAGES_DIR = shared read-only base (admin's packages)
 # HEPPYYIER_PACKAGES_DIR        = user's own writable store (default: inside venv)
 
-# With henv — pass the shared dir as system, leave user dir as default:
+# First time — specify the shared dir explicitly:
 henv --system-packages-dir /global/cfs/cdirs/myproject/hep_packages .
 # heyy list         shows shared packages
 # heyy install pkg  writes to .venv/heppyyier_packages/ — never touches the shared dir
 module load fastjet pythia8
 python analysis.py
+```
+
+To avoid repeating the flag on every `henv .`, persist it in one of these ways:
+
+```bash
+# Option A — per-project (.heppyyier.toml in the analysis directory):
+echo 'system_packages_dir = "/global/cfs/cdirs/myproject/hep_packages"' >> .heppyyier.toml
+henv .   # picks it up automatically from the TOML file
+
+# Option B — per-user (add to ~/.bashrc or site module system):
+echo 'export HEPPYYIER_SYSTEM_PACKAGES_DIR=/global/cfs/cdirs/myproject/hep_packages' >> ~/.bashrc
+# henv inherits the env var from the parent shell — no flag needed
+henv .
+```
 
 # Register a personal Jupyter kernel pointing at the shared packages:
 export HEPPYYIER_SYSTEM_PACKAGES_DIR=/global/cfs/cdirs/myproject/hep_packages
