@@ -9,8 +9,6 @@ description = "HEP C++ package manager with cppyy dynamic bindings"
 requires-python = ">=3.9"
 dependencies = [
     "cppyy>=3.1",
-    "numpy>=1.24",
-    "pandas>=2.0",
     "click>=8.1",
     "requests>=2.31",
     "tqdm>=4.66",
