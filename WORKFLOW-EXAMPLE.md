@@ -84,8 +84,13 @@ henv .                  # existing env — activates immediately, no prompts
 
 ## 2. Google Colab (ephemeral runtime + Google Drive cache)
 
-Colab runtimes reset on disconnect. Mount Google Drive once and store compiled
-packages there so only `pip install heppyyier` (seconds) is needed each session.
+Colab runtimes reset on disconnect. The two-tier package system maps naturally
+to Colab: persistent Drive storage acts as the package store, and anything
+installed in the current session stays local to `/content/`.
+
+### 2a. Personal Drive (single user)
+
+You own the Drive folder — read and write go to the same place.
 
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
@@ -95,10 +100,9 @@ from google.colab import drive
 drive.mount('/content/drive')
 
 import os
-# Point heppyyier at a persistent Drive directory
 os.environ["HEPPYYIER_PACKAGES_DIR"] = "/content/drive/MyDrive/hep_packages"
 
-# ── Cell 2: build once, then skip this cell in future sessions ─────────────
+# ── Cell 2: build once, then comment out for future sessions ───────────────
 # !heyy init
 # !heyy install fastjet hepmc3 lhapdf pythia8 fjcontrib --verbose
 
@@ -107,7 +111,37 @@ import heppyyier
 heppyyier.load("fastjet")
 heppyyier.load("pythia8")
 import fastjet, pythia8
-print("fastjet", fastjet.__version__ if hasattr(fastjet, '__version__') else "ok")
+```
+
+### 2b. Shared Drive (course / team)
+
+An instructor or admin pre-builds packages to a shared Drive folder.
+Students set that as the read-only system base and write any personal
+additions to a local (session-only) directory.
+
+```python
+# ── Cell 1: always run ─────────────────────────────────────────────────────
+!pip install git+https://github.com/matplo/heppyyier.git -q
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+import os
+# Shared pre-built packages from instructor (read-only)
+os.environ["HEPPYYIER_SYSTEM_PACKAGES_DIR"] = \
+    "/content/drive/Shareddrives/HEPcourse/hep_packages"
+# Personal writable store — local to this session
+os.environ["HEPPYYIER_PACKAGES_DIR"] = "/content/hep_packages_user"
+
+# ── Cell 2: instructor only — build once and share ─────────────────────────
+# export HEPPYYIER_PACKAGES_DIR=/content/drive/Shareddrives/HEPcourse/hep_packages
+# !heyy install fastjet hepmc3 lhapdf pythia8 fjcontrib --verbose
+
+# ── Cell 3: every session (students) ───────────────────────────────────────
+import heppyyier
+heppyyier.load("fastjet")   # resolves from shared Drive — no build needed
+heppyyier.load("pythia8")
+import fastjet, pythia8
 ```
 
 > **Compatibility note:** compiled packages (ELF binaries) are platform-specific.
