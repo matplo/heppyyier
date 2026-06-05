@@ -203,16 +203,23 @@ heyy generate-modules            # write modulefiles into the same tree
 
 ### Each user (no compilation):
 ```bash
-export HEPPYYIER_PACKAGES_DIR=/global/cfs/cdirs/myproject/hep_packages
-heyy kernel install              # personal kernel.json pointing at shared packages
+# HEPPYYIER_SYSTEM_PACKAGES_DIR = shared read-only base (admin's packages)
+# HEPPYYIER_PACKAGES_DIR        = user's own writable store (default: inside venv)
 
-# With henv — module use is registered automatically on subshell entry:
-henv --packages-dir /global/cfs/cdirs/myproject/hep_packages .
+# With henv — pass the shared dir as system, leave user dir as default:
+henv --system-packages-dir /global/cfs/cdirs/myproject/hep_packages .
+# heyy list         shows shared packages
+# heyy install pkg  writes to .venv/heppyyier_packages/ — never touches the shared dir
 module load fastjet pythia8
 python analysis.py
 
-# Without henv (plain venv activation) — register modulefiles dir manually:
+# Register a personal Jupyter kernel pointing at the shared packages:
+export HEPPYYIER_SYSTEM_PACKAGES_DIR=/global/cfs/cdirs/myproject/hep_packages
+heyy kernel install
+
+# Without henv (plain venv activation):
 source .venv/bin/activate
+export HEPPYYIER_SYSTEM_PACKAGES_DIR=/global/cfs/cdirs/myproject/hep_packages
 eval "$(heyy modules)"
 module load fastjet pythia8
 python analysis.py
@@ -341,8 +348,8 @@ heyy kernel install
 | Build all core packages | `heyy install fastjet hepmc3 lhapdf pythia8 fjcontrib` |
 | Build cppyy from source (HPC) | `heyy install cppyy --force` |
 | Share packages (admin) | `export HEPPYYIER_PACKAGES_DIR=/shared/…; heyy install …` |
-| Use shared packages (user) | `export HEPPYYIER_PACKAGES_DIR=/shared/…` |
-| Add personal packages on top of shared | `henv --system-packages-dir /shared/… .` |
+| Use shared packages (user, read-only) | `henv --system-packages-dir /shared/… .` |
+| Add personal packages on top of shared | `heyy install mypkg` (writes to venv, not shared dir) |
 | Register Jupyter kernel | `heyy kernel install` |
 | Refresh modulefiles | `heyy generate-modules` |
 | Update heppyyier + recipes | `heyy upgrade && heyy recipe update` |
