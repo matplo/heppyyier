@@ -52,6 +52,22 @@ def get_build_dir() -> pathlib.Path:
     return get_packages_dir()
 
 
+def get_system_packages_dirs() -> list:
+    """Return read-only shared package directories (empty list = no overlay).
+
+    Resolution order:
+      1. HEPPYYIER_SYSTEM_PACKAGES_DIR env var (colon-separated)
+      2. .heppyyier.toml  system_packages_dir key
+
+    When unset, returns [] and behaviour is identical to before this feature.
+    """
+    val = os.environ.get("HEPPYYIER_SYSTEM_PACKAGES_DIR", "")
+    if not val:
+        cfg = _load_project_config()
+        val = cfg.get("system_packages_dir", "")
+    return [pathlib.Path(p).resolve() for p in val.split(":") if p.strip()]
+
+
 def get_registry_path() -> pathlib.Path:
     return get_packages_dir() / "registry.json"
 

@@ -50,25 +50,6 @@ module() {
 }
 """
 
-_ENV_SH_TEMPLATE = """\
-# heppyyier env — {name} {version}
-export {NAME}_DIR="{prefix}"
-export PATH="{prefix}/bin:$PATH"
-{lib_path_line}
-export CPATH="{prefix}/include:$CPATH"
-export HEPPYYIER_LOADED_{NAME}="{version}"
-export HEPPYYIER_LOADED_{NAME}_PREFIX="{prefix}"
-"""
-
-_ENV_UNSET_SH_TEMPLATE = (
-    "# heppyyier env-unset — {name} {version}\n"
-    'export PATH="${{PATH//{prefix_escaped_bin}:/}}"\n'
-    "{lib_unset_line}\n"
-    'export CPATH="${{CPATH//{prefix_escaped_inc}:/}}"\n'
-    "unset {NAME}_DIR\n"
-    "unset HEPPYYIER_LOADED_{NAME}\n"
-    "unset HEPPYYIER_LOADED_{NAME}_PREFIX\n"
-)
 
 
 def shell_init_script() -> str:
@@ -79,7 +60,7 @@ def get_modulefiles_dir() -> pathlib.Path:
     return get_build_dir() / "modulefiles"
 
 
-def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path) -> pathlib.Path:
+def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path, python_paths=None) -> pathlib.Path:
     """Generate a TCL modulefile for use with Environment Modules / Lmod."""
     NAME = name.upper().replace("-", "_")
     p = prefix
@@ -106,6 +87,12 @@ def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path) -> pathl
         for sp in sorted(_lib_dir.glob("python*/site-packages")):
             rel = sp.relative_to(p)
             lines.append(f"prepend-path PYTHONPATH $prefix/{rel}")
+    # Explicit python_paths from recipe (e.g. "." for --target installs, "lib" for ROOT).
+    # These are in addition to the lib/python*/site-packages glob above.
+    for rel in (python_paths or []):
+        entry = "prepend-path PYTHONPATH $prefix" if rel == "." else f"prepend-path PYTHONPATH $prefix/{rel}"
+        if entry not in lines:
+            lines.append(entry)
     if (p / "include").is_dir():
         lines.append("prepend-path CPATH $prefix/include")
     content = "\n".join(lines) + "\n"
@@ -117,46 +104,63 @@ def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path) -> pathl
     return mod_file
 
 
-def generate_env_scripts(name: str, version: str, prefix: pathlib.Path) -> None:
+def generate_env_scripts(name: str, version: str, prefix: pathlib.Path, python_paths=None) -> None:
     NAME = name.upper().replace("-", "_")
     prefix_str = str(prefix)
-    prefix_escaped = prefix_str.replace("/", "\\/")
 
-    _lib_path = prefix / "lib" if (prefix / "lib").is_dir() else (prefix / "lib64" if (prefix / "lib64").is_dir() else prefix / "lib")
+    _lib_path = (
+        prefix / "lib" if (prefix / "lib").is_dir()
+        else (prefix / "lib64" if (prefix / "lib64").is_dir() else prefix / "lib")
+    )
     lib_dir = str(_lib_path)
     bin_dir = f"{prefix_str}/bin"
     inc_dir = f"{prefix_str}/include"
-    lib_dir_escaped = lib_dir.replace("/", "\\/")
-    bin_dir_escaped = bin_dir.replace("/", "\\/")
-    inc_dir_escaped = inc_dir.replace("/", "\\/")
+    lib_var = "DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
 
-    if sys.platform == "darwin":
-        lib_var = "DYLD_LIBRARY_PATH"
-    else:
-        lib_var = "LD_LIBRARY_PATH"
+    # Collect PYTHONPATH entries: glob fallback + explicit python_paths
+    py_dirs: list = []
+    for sp in sorted(_lib_path.glob("python*/site-packages")):
+        py_dirs.append(str(sp))
+    for rel in (python_paths or []):
+        d = prefix_str if rel == "." else str(prefix / rel)
+        if d not in py_dirs:
+            py_dirs.append(d)
 
-    lib_path_line = f'export {lib_var}="{lib_dir}:${lib_var}"'
-    lib_unset_line = f'export {lib_var}="${{{lib_var}//{lib_dir_escaped}:/}}"'
+    def _esc(s: str) -> str:
+        return s.replace("/", "\\/")
 
-    env_sh = _ENV_SH_TEMPLATE.format(
-        name=name,
-        NAME=NAME,
-        version=version,
-        prefix=prefix_str,
-        lib_path_line=lib_path_line,
-    )
-    env_unset_sh = _ENV_UNSET_SH_TEMPLATE.format(
-        name=name,
-        NAME=NAME,
-        version=version,
-        prefix=prefix_str,
-        prefix_escaped_bin=bin_dir_escaped,
-        prefix_escaped_inc=inc_dir_escaped,
-        lib_unset_line=lib_unset_line,
-    )
+    # env.sh
+    set_lines = [
+        f"# heppyyier env — {name} {version}",
+        f'export {NAME}_DIR="{prefix_str}"',
+        f'export PATH="{bin_dir}:$PATH"',
+        f'export {lib_var}="{lib_dir}:${lib_var}"',
+    ]
+    for d in py_dirs:
+        set_lines.append(f'export PYTHONPATH="{d}:$PYTHONPATH"')
+    set_lines += [
+        f'export CPATH="{inc_dir}:$CPATH"',
+        f'export HEPPYYIER_LOADED_{NAME}="{version}"',
+        f'export HEPPYYIER_LOADED_{NAME}_PREFIX="{prefix_str}"',
+    ]
 
-    (prefix / "env.sh").write_text(env_sh)
-    (prefix / "env-unset.sh").write_text(env_unset_sh)
+    # env-unset.sh
+    unset_lines = [
+        f"# heppyyier env-unset — {name} {version}",
+        f'export PATH="${{PATH//{_esc(bin_dir)}:/}}"',
+        f'export {lib_var}="${{{lib_var}//{_esc(lib_dir)}:/}}"',
+    ]
+    for d in py_dirs:
+        unset_lines.append(f'export PYTHONPATH="${{PYTHONPATH//{_esc(d)}:/}}"')
+    unset_lines += [
+        f'export CPATH="${{CPATH//{_esc(inc_dir)}:/}}"',
+        f"unset {NAME}_DIR",
+        f"unset HEPPYYIER_LOADED_{NAME}",
+        f"unset HEPPYYIER_LOADED_{NAME}_PREFIX",
+    ]
+
+    (prefix / "env.sh").write_text("\n".join(set_lines) + "\n")
+    (prefix / "env-unset.sh").write_text("\n".join(unset_lines) + "\n")
 
 
 def env_path(name: str, version: Optional[str] = None) -> pathlib.Path:

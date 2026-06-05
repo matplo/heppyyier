@@ -60,8 +60,10 @@ class PackageBuilder:
             raise BuildError(f"Unknown build_system: {self.recipe.build_system}")
 
         self._verify(prefix)
-        generate_env_scripts(self.recipe.name, version, prefix)
-        write_tcl_modulefile(self.recipe.name, version, prefix)
+        generate_env_scripts(self.recipe.name, version, prefix,
+                             python_paths=self.recipe.python_paths)
+        write_tcl_modulefile(self.recipe.name, version, prefix,
+                             python_paths=self.recipe.python_paths)
         return self._make_registry_record(prefix, version, log_path)
 
     def _base_env(self) -> dict:
@@ -368,8 +370,10 @@ def register_package(
         "recipe_path": stored_recipe_path,
     }
 
-    generate_env_scripts(recipe.name, ver, prefix_path)
-    write_tcl_modulefile(recipe.name, ver, prefix_path)
+    generate_env_scripts(recipe.name, ver, prefix_path,
+                         python_paths=recipe.python_paths)
+    write_tcl_modulefile(recipe.name, ver, prefix_path,
+                         python_paths=recipe.python_paths)
     get_registry().register(recipe.name, record)
     print(f"Registered {recipe.name} {ver} from {prefix_path}")
     return record

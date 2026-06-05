@@ -145,39 +145,40 @@ def init():
     else:
         click.echo("Recipe source: already registered")
 
-    # Check cppyy backend and auto-fix if the library is inside this venv
-    from .cppyy_fix import fix_cppyy, check_cppyy, get_broken_deps, _find_libcling, is_in_venv, libcling_in_venv
-    lib = _find_libcling()
-    if lib is None:
-        click.echo("cppyy backend: not found (cppyy not installed?)")
-    elif check_cppyy():
-        click.echo("cppyy backend: OK")
-    else:
-        broken = get_broken_deps(lib)
-        click.echo(f"\ncppyy backend: {len(broken)} broken library path(s) in {lib}:")
-        for p in broken:
-            click.echo(f"  {p}")
-        if is_in_venv() and libcling_in_venv(lib):
-            click.echo("Auto-fixing (library is inside this venv) ...")
-            fixed = fix_cppyy(verbose=True)
-            if fixed:
-                click.echo(f"cppyy patched successfully ({len(fixed)} path(s) fixed).")
+    # Check cppyy backend and auto-fix — only when libCling is inside this venv.
+    # Importing cppyy_backend on shared HPC environments (where libCling lives
+    # outside the venv) triggers PCH rebuilds that can loop indefinitely on
+    # network filesystems. Skip the check entirely in that case.
+    from .cppyy_fix import is_in_venv, libcling_in_venv, _find_libcling
+    if is_in_venv():
+        lib = _find_libcling()
+        if lib is None:
+            click.echo("cppyy backend: not found (cppyy not installed?)")
+        elif libcling_in_venv(lib):
+            from .cppyy_fix import fix_cppyy, check_cppyy, get_broken_deps
+            if check_cppyy():
+                click.echo("cppyy backend: OK")
             else:
-                click.echo(
-                    "Could not auto-fix (install_name_tool / patchelf missing?).\n"
-                    "Run 'heppyyier fix-cppyy' to retry manually.",
-                    err=True,
-                )
+                broken = get_broken_deps(lib)
+                click.echo(f"\ncppyy backend: {len(broken)} broken library path(s) in {lib}:")
+                for p in broken:
+                    click.echo(f"  {p}")
+                click.echo("Auto-fixing (library is inside this venv) ...")
+                fixed = fix_cppyy(verbose=True)
+                if fixed:
+                    click.echo(f"cppyy patched successfully ({len(fixed)} path(s) fixed).")
+                else:
+                    click.echo(
+                        "Could not auto-fix (install_name_tool / patchelf missing?).\n"
+                        "Run 'heppyyier fix-cppyy' to retry manually.",
+                        err=True,
+                    )
         else:
-            click.echo(
-                "\nLibrary is outside this venv — not patching automatically.\n"
-                "Run 'heppyyier fix-cppyy' to inspect and patch manually."
-            )
+            click.echo("cppyy backend: skipping check (libCling is outside this venv — run 'heppyyier fix-cppyy' if needed)")
+    else:
+        click.echo("cppyy backend: skipping check (not in a virtual environment)")
 
-    # Install sitecustomize.py for auto-loading via module load
-    from .shell import write_sitecustomize
-    sc = write_sitecustomize()
-    click.echo(f"sitecustomize.py installed: {sc}")
+    click.echo("\nRun 'heyy generate-modules' to enable 'module load' auto-loading.")
 
 
 # ---------------------------------------------------------------------------
