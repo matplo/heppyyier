@@ -202,9 +202,34 @@ class Loader:
                 UserWarning, stacklevel=4,
             )
 
+    def _ensure_cppyy_on_syspath(self) -> None:
+        """Add cppyy's heppyyier prefix to sys.path when it was installed via
+        'heyy install cppyy' (pip --target {prefix}).
+
+        With --target installs the cppyy/* packages live directly in the
+        heppyyier-managed prefix (user or system registry), not in any venv's
+        site-packages.  Without this, 'import cppyy' falls back to the binary
+        pip wheel — which crashes on NERSC/SUSE (<filesystem> not found) and
+        silently fails on Colab when the venv has no cppyy at all.
+        """
+        if 'cppyy' in sys.modules:
+            return
+        from .registry import get_registry
+        rec = get_registry().get('cppyy')
+        if rec is None:
+            return
+        prefix = pathlib.Path(rec['prefix'])
+        # --target installs have the cppyy/ package dir directly in the prefix.
+        # Old-style installs only have a .cppyy_install marker — skip those.
+        if (prefix / 'cppyy').is_dir():
+            p = str(prefix)
+            if p not in sys.path:
+                sys.path.insert(0, p)
+
     def _preload_cppyy_deps(self) -> None:
         """Pre-load cppyy backend dependencies that may be missing from rpath."""
         self._ensure_cxx17_headers()
+        self._ensure_cppyy_on_syspath()
         import sys
         _search = []
         if sys.platform == "darwin":
@@ -282,7 +307,12 @@ class Loader:
             try:
                 cppyy.include(header)
             except Exception as e:
-                warnings.warn(f"Could not include '{header}': {e}")
+                warnings.warn(
+                    f"[heppyyier] Could not include '{header}': {e}\n"
+                    "  The proxy module will be created but attribute access will fail.\n"
+                    "  Check that the include directory is readable and cppyy is working.",
+                    stacklevel=3,
+                )
 
     def _setup_python_paths(
         self,
