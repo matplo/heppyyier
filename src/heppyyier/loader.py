@@ -226,9 +226,32 @@ class Loader:
             if p not in sys.path:
                 sys.path.insert(0, p)
 
+    def _ensure_cppyy_api_path(self) -> None:
+        """Set CPPYY_API_PATH from cppyy_backend's own include/ directory.
+
+        cppyy checks CPPYY_API_PATH at import time to find the CPyCppyy C-level
+        API headers. When they are missing (common with 'uv pip install' on Colab
+        or non-standard prefix installs), cppyy can parse headers with cling but
+        cannot expose C++ namespaces as Python objects — cppyy.gbl.fastjet is
+        None even after a successful cppyy.include(). Must be called BEFORE
+        'import cppyy'.
+        """
+        if 'CPPYY_API_PATH' in os.environ:
+            return
+        if 'cppyy' in sys.modules:
+            return  # too late to help, but don't clobber
+        try:
+            import cppyy_backend as _cb
+            api_path = pathlib.Path(_cb.__file__).parent / 'include'
+            if api_path.is_dir():
+                os.environ['CPPYY_API_PATH'] = str(api_path)
+        except ImportError:
+            pass
+
     def _preload_cppyy_deps(self) -> None:
         """Pre-load cppyy backend dependencies that may be missing from rpath."""
         self._ensure_cxx17_headers()
+        self._ensure_cppyy_api_path()
         self._ensure_cppyy_on_syspath()
         import sys
         _search = []

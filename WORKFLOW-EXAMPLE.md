@@ -132,6 +132,8 @@ personal additions to a local (session-only) path.
 
 ```python
 # ── Cell 1: always run ─────────────────────────────────────────────────────
+# Use pip (not uv pip) — uv installs headers to a non-standard path that
+# breaks cppyy's CPyCppyy API lookup, silently corrupting C++ namespace bindings.
 !pip install git+https://github.com/matplo/heppyyier.git -q
 
 # Mount Drive FIRST — heppyyier reads headers and registry from Drive at load time.
