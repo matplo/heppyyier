@@ -319,11 +319,14 @@ def build_package(
     force: bool = False,
     redownload: bool = False,
     verbose: bool = False,
+    njobs: Optional[int] = None,
 ) -> dict:
     from .recipe import find_recipe
     from .registry import get_registry
 
     recipe = find_recipe(name, version=version, recipe_path=recipe_path)
+    if njobs is not None:
+        recipe.make_jobs = njobs
     reg = get_registry()
 
     if reg.is_installed(recipe.name) and not force:
@@ -338,7 +341,7 @@ def build_package(
     for dep in recipe.depends_on:
         if not reg.is_installed(dep):
             print(f"[{name}] Installing dependency: {dep}")
-            build_package(dep, verbose=verbose)
+            build_package(dep, verbose=verbose, njobs=njobs)
 
     builder = PackageBuilder(recipe, verbose=verbose)
     record = builder.build(version=version or recipe.version, force=force, redownload=redownload)

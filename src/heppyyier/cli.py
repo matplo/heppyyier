@@ -23,7 +23,8 @@ def cli():
 @click.option("--force", is_flag=True, help="Re-extract source and rebuild (keeps cached tarball).")
 @click.option("--redownload", is_flag=True, help="Delete cached tarball and re-download before rebuilding.")
 @click.option("--verbose", is_flag=True, help="Show build output in terminal.")
-def install(packages, version, recipe_path, force, redownload, verbose):
+@click.option("--njobs", "-j", default=None, type=int, help="Override parallel make jobs (overrides recipe default of 4).")
+def install(packages, version, recipe_path, force, redownload, verbose, njobs):
     """Download, build, and register one or more HEP C++ packages (in order)."""
     from .builder import build_package
     for i, package in enumerate(packages):
@@ -32,7 +33,7 @@ def install(packages, version, recipe_path, force, redownload, verbose):
         _recipe_path = recipe_path if len(packages) == 1 else None
         if len(packages) > 1:
             click.echo(f"\n[{i+1}/{len(packages)}] Installing {package} ...")
-        build_package(package, version=_version, recipe_path=_recipe_path, force=force, redownload=redownload, verbose=verbose)
+        build_package(package, version=_version, recipe_path=_recipe_path, force=force, redownload=redownload, verbose=verbose, njobs=njobs)
 
 
 # ---------------------------------------------------------------------------
