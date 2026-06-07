@@ -425,13 +425,22 @@ def modules_path():
 @cli.command("generate-modules")
 def generate_modules():
     """Regenerate TCL modulefiles for all installed packages."""
+    import pathlib
     from .shell import write_tcl_modulefile, get_modulefiles_dir, write_sitecustomize
     from .registry import get_registry
     reg = get_registry()
     count = 0
     for name, record in reg.all_packages().items():
-        import pathlib
-        mod_file = write_tcl_modulefile(name, record["version"], pathlib.Path(record["prefix"]))
+        python_paths = record.get("python_paths")
+        if python_paths is None:
+            # Fallback for registry records written before python_paths was stored
+            try:
+                from .recipe import find_recipe
+                r = find_recipe(name, version=record.get("version"))
+                python_paths = r.python_paths
+            except Exception:
+                python_paths = []
+        mod_file = write_tcl_modulefile(name, record["version"], pathlib.Path(record["prefix"]), python_paths=python_paths)
         click.echo(f"  wrote {mod_file}")
         count += 1
     if count == 0:

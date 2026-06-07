@@ -307,6 +307,7 @@ class PackageBuilder:
             "include_dir": str(prefix / "include"),
             "lib_dir": str(_resolve_lib_dir(prefix)),
             "depends_on": self.recipe.depends_on,
+            "python_paths": self.recipe.python_paths,
             "build_log": str(log_path),
             "recipe_path": recipe_path,
         }
@@ -378,6 +379,7 @@ def register_package(
         "include_dir": str(prefix_path / "include"),
         "lib_dir": str(_resolve_lib_dir(prefix_path)),
         "depends_on": recipe.depends_on,
+        "python_paths": recipe.python_paths,
         "build_log": None,
         "recipe_path": stored_recipe_path,
     }
