@@ -216,9 +216,11 @@ To control which version Pythia8 sees, install (or `register`) the desired fastj
 heppyyier install fastjet --verbose          # show build output live
 heppyyier install fastjet --force            # re-extract and rebuild (keeps cached tarball)
 heppyyier install fastjet --redownload       # delete tarball and start completely fresh
+heppyyier install fastjet -j 8              # use 8 parallel make jobs (overrides recipe default of 4)
 
 # Flags apply to all packages when multiple names are given:
 heppyyier install fastjet hepmc3 lhapdf pythia8 fjcontrib --verbose
+heppyyier install fastjet hepmc3 lhapdf pythia8 fjcontrib -j 8
 
 # --version and --recipe only take effect for a single-package install:
 heppyyier install fastjet --version 3.4.2
@@ -460,6 +462,7 @@ To add the directory to your active module search path:
 
 ```bash
 eval "$(heppyyier modules)"       # runs: module use <packages_dir>/modulefiles
+heppyyier modules-path            # print the modulefiles path only (no 'module use' prefix)
 ```
 
 After that, standard `module` commands work as usual:
