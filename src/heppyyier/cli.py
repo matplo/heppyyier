@@ -415,13 +415,6 @@ def modules():
     click.echo(f"module use {get_modulefiles_dir()}")
 
 
-@cli.command("modules-path")
-def modules_path():
-    """Print the heppyyier modulefiles directory path (no 'module use' prefix)."""
-    from .shell import get_modulefiles_dir
-    click.echo(get_modulefiles_dir())
-
-
 @cli.command("generate-modules")
 def generate_modules():
     """Regenerate TCL modulefiles for all installed packages."""
