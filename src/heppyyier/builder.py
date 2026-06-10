@@ -32,16 +32,24 @@ class PackageBuilder:
         self.verbose = verbose
         self._build_dir = get_build_dir()
         self._log_dir = get_log_dir()
+        self._clean_build = False
 
-    def build(self, version: Optional[str] = None, force: bool = False, redownload: bool = False) -> dict:
+    def build(self, version: Optional[str] = None, force: bool = False, redownload: bool = False, clean: bool = False) -> dict:
         version = version or self.recipe.version
         prefix = (self._build_dir / self.recipe.name / version).resolve()
 
-        # On --force, wipe the install prefix so stale files from a previous
-        # partial build can't interfere. Critical for FUSE-mounted filesystems
-        # (e.g. Google Drive) where a failed 'make install' can leave corrupted
-        # .so files that break libtool's relink step on the next attempt.
-        if force and prefix.exists():
+        # --clean removes build artifacts (the cmake build dir, or 'make clean'
+        # for in-source autotools builds) without touching the extracted source
+        # tree. --force additionally re-extracts the source. Either way, treat
+        # the build as "dirty" so stale build artifacts get cleaned.
+        self._clean_build = clean or force
+
+        # On --force or --clean, wipe the install prefix so stale files from a
+        # previous partial build can't interfere. Critical for FUSE-mounted
+        # filesystems (e.g. Google Drive) where a failed 'make install' can
+        # leave corrupted .so files that break libtool's relink step on the
+        # next attempt.
+        if self._clean_build and prefix.exists():
             print(f"Removing stale prefix: {prefix}")
             shutil.rmtree(prefix)
 
@@ -197,6 +205,9 @@ class PackageBuilder:
         configure = src_dir / "configure"
         if not configure.exists():
             raise BuildError(f"No configure script found in {src_dir}")
+        if self._clean_build and (src_dir / "Makefile").exists():
+            print("Cleaning previous build artifacts (make clean) ...")
+            self._run(["make", "clean"], src_dir, log_path)
         cmd = [str(configure), f"--prefix={prefix}"] + self.recipe.configure_args
         print(f"Configuring (autotools) ...")
         self._run(cmd, src_dir, log_path)
@@ -206,6 +217,9 @@ class PackageBuilder:
         self, src_dir: pathlib.Path, prefix: pathlib.Path, log_path: pathlib.Path
     ) -> pathlib.Path:
         build_dir = src_dir.parent / f"{src_dir.name}-cmake-build"
+        if self._clean_build and build_dir.exists():
+            print(f"Removing stale build directory: {build_dir}")
+            shutil.rmtree(build_dir)
         build_dir.mkdir(exist_ok=True)
         cmd = [
             "cmake",
@@ -321,6 +335,7 @@ def build_package(
     redownload: bool = False,
     verbose: bool = False,
     njobs: Optional[int] = None,
+    clean: bool = False,
 ) -> dict:
     from .recipe import find_recipe
     from .registry import get_registry
@@ -330,11 +345,11 @@ def build_package(
         recipe.make_jobs = njobs
     reg = get_registry()
 
-    if reg.is_installed(recipe.name) and not force:
+    if reg.is_installed(recipe.name) and not force and not clean:
         existing = reg.get(recipe.name)
         print(
             f"{recipe.name} {existing['version']} already installed. "
-            "Use --force to rebuild."
+            "Use --force or --clean to rebuild."
         )
         return existing
 
@@ -345,7 +360,7 @@ def build_package(
             build_package(dep, verbose=verbose, njobs=njobs)
 
     builder = PackageBuilder(recipe, verbose=verbose)
-    record = builder.build(version=version or recipe.version, force=force, redownload=redownload)
+    record = builder.build(version=version or recipe.version, force=force, redownload=redownload, clean=clean)
     reg.register(recipe.name, record)
     print(f"\n{recipe.name} {record['version']} installed at {record['prefix']}")
     return record
