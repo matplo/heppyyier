@@ -38,9 +38,16 @@ class _ModuleProxy:
 module = _ModuleProxy()
 
 
-def load(name: str, **kwargs) -> None:
-    """Shorthand for heppyyier.module.load(name)."""
-    module.load(name, **kwargs)
+def load(name, **kwargs) -> None:
+    """Shorthand for heppyyier.module.load(name).
+
+    Accepts a single package name or a list of names loaded in order.
+    """
+    if isinstance(name, (list, tuple)):
+        for n in name:
+            module.load(n, **kwargs)
+    else:
+        module.load(name, **kwargs)
 
 
 def gSystem_load(name: str) -> None:
