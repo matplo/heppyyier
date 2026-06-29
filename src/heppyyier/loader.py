@@ -40,7 +40,10 @@ class Loader:
         install_if_missing: bool = False,
         verbose: bool = False,
     ) -> None:
-        if name in self._loaded:
+        # Normalize hyphens/underscores early so dedup works regardless of which
+        # form the caller uses ("heppyyier-utils" and "heppyyier_utils" are one package).
+        alt = name.replace("_", "-") if "_" in name else name.replace("-", "_")
+        if name in self._loaded or alt in self._loaded:
             return
 
         reg = get_registry()
@@ -60,6 +63,16 @@ class Loader:
 
         if record is None:
             record = reg.get(name)
+
+        # PyPI/pip normalizes hyphens and underscores as equivalent.  Let users
+        # pass either form ("heppyyier_utils" or "heppyyier-utils") and resolve
+        # to whichever variant the registry actually has.
+        if record is None:
+            alt = name.replace("_", "-") if "_" in name else name.replace("-", "_")
+            alt_record = reg.get(alt)
+            if alt_record is not None:
+                record = alt_record
+                name = alt  # use the canonical registry name going forward
 
         if record is None:
             if install_if_missing:
