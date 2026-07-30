@@ -609,6 +609,45 @@ def kernel_install(name, display_name, sys_prefix):
     click.echo(f"\nSelect '{spec['display_name']}' in JupyterHub/Lab to use it.")
 
 
+@kernel.command("list")
+def kernel_list():
+    """List heppyyier-managed Jupyter kernels."""
+    from .kernel import list_kernels
+    try:
+        kernels = list_kernels()
+    except RuntimeError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+    if not kernels:
+        click.echo("No heppyyier kernels installed. Run 'heyy kernel install' to create one.")
+        return
+
+    click.echo(f"{'Name':<30} {'Display name':<40} Packages dir")
+    click.echo("-" * 100)
+    for k in kernels:
+        click.echo(f"{k['name']:<30} {k['display_name']:<40} {k['packages_dir']}")
+
+
+@kernel.command("uninstall")
+@click.argument("name")
+def kernel_uninstall(name):
+    """Remove a heppyyier-managed Jupyter kernel spec."""
+    from .kernel import remove_kernel
+    try:
+        removed = remove_kernel(name)
+    except KeyError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+    except PermissionError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+    except RuntimeError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+    click.echo(f"Removed kernel '{name}': {removed}")
+
+
 # ---------------------------------------------------------------------------
 # Entry point — clean error messages, no tracebacks for known exceptions
 # ---------------------------------------------------------------------------

@@ -138,3 +138,47 @@ def install_kernel(
         )
 
     return pathlib.Path(dest)
+
+
+def list_kernels() -> list:
+    """Return info dicts for every heppyyier-managed Jupyter kernel."""
+    _check_deps()
+    from jupyter_client.kernelspec import KernelSpecManager
+    mgr = KernelSpecManager()
+    results = []
+    for name, spec in mgr.get_all_specs().items():
+        meta = spec.get("spec", {}).get("metadata", {}) if isinstance(spec, dict) else {}
+        if not meta.get("heppyyier"):
+            continue
+        results.append({
+            "name": name,
+            "display_name": spec.get("spec", {}).get("display_name", name) if isinstance(spec, dict) else name,
+            "resource_dir": spec.get("resource_dir", "") if isinstance(spec, dict) else "",
+            "packages_dir": meta.get("packages_dir", ""),
+        })
+    return results
+
+
+def remove_kernel(name: str) -> pathlib.Path:
+    """Remove a heppyyier-managed kernel spec by name.
+
+    Raises KeyError if the kernel doesn't exist.
+    Raises PermissionError if it's not a heppyyier-managed kernel.
+    """
+    _check_deps()
+    from jupyter_client.kernelspec import KernelSpecManager, NoSuchKernel
+    mgr = KernelSpecManager()
+    try:
+        spec = mgr.get_kernel_spec(name)
+    except NoSuchKernel:
+        raise KeyError(f"No kernel named '{name}' found.")
+
+    if not spec.metadata.get("heppyyier"):
+        raise PermissionError(
+            f"Kernel '{name}' was not installed by heppyyier — refusing to remove it."
+        )
+
+    resource_dir = pathlib.Path(spec.resource_dir)
+    import shutil
+    shutil.rmtree(resource_dir)
+    return resource_dir
