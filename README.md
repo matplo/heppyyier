@@ -216,6 +216,7 @@ To control which version Pythia8 sees, install (or `register`) the desired fastj
 heppyyier install fastjet --verbose          # show build output live
 heppyyier install fastjet --force            # re-extract and rebuild (keeps cached tarball)
 heppyyier install fastjet --redownload       # delete tarball and start completely fresh
+heppyyier install fastjet --clean            # wipe only build artifacts, keep extracted source
 heppyyier install fastjet -j 8              # use 8 parallel make jobs (overrides recipe default of 4)
 
 # Flags apply to all packages when multiple names are given:
@@ -226,6 +227,10 @@ heppyyier install fastjet hepmc3 lhapdf pythia8 fjcontrib -j 8
 heppyyier install fastjet --version 3.4.2
 heppyyier install mypackage --recipe /path/to/mypackage/1.0.yaml
 ```
+
+`--clean` is useful on slow network mounts (e.g. Google Drive) where re-extracting
+a large tarball is expensive: it removes cmake build dirs or runs `make clean` for
+autotools packages, without touching the already-extracted source tree.
 
 ### Inspecting what is installed
 
@@ -252,6 +257,10 @@ import heppyyier
 heppyyier.load("fastjet")
 heppyyier.load("pythia8")
 heppyyier.load("fjcontrib")   # heppyyier.load() is a no-op if already loaded
+
+# Or pass a list — packages are loaded in order:
+heppyyier.load(["fastjet", "pythia8", "fjcontrib"])
+
 import fastjet, pythia8, fjcontrib
 
 # Either way, packages are available as cppyy proxies:
@@ -432,7 +441,7 @@ After reloading your shell, pressing `<Tab>` completes commands, subcommands, an
 ```
 heyy <Tab>               # install  list  avail  info  env  kernel  recipe  …
 heyy install <Tab>       # (available package names from recipes)
-heyy kernel <Tab>        # install
+heyy kernel <Tab>        # install  list  update  uninstall
 heyy kernel install --<Tab>  # --name  --display-name  --sys-prefix
 ```
 
@@ -537,22 +546,24 @@ heyy demos --overwrite    # re-download even if files already exist
 For Jupyter / JupyterHub:
 ```bash
 pip install jupyter matplotlib numpy ipykernel
-heppyyier kernel install          # register the venv as a selectable kernel
+heyy kernel install               # register the venv as a selectable kernel
 jupyter notebook demos/demo_fjcontrib.ipynb
 ```
 
 Select the `HEP (...)` kernel when prompted, or use `--kernel heppyyier-<venv>` on the
-command line. See the [Jupyter kernel](#jupyter-kernel) section for full options.
+command line. After installing more packages, run `heyy kernel update` to refresh the
+kernel spec. See the [Jupyter kernel](#jupyter-kernel) section for full options.
 
 ---
 
 ## Jupyter kernel
 
-Register the current venv as a Jupyter kernel so it can be selected in JupyterHub or JupyterLab:
+Register the current venv as a Jupyter kernel so it can be selected in JupyterHub or
+JupyterLab:
 
 ```bash
 pip install ipykernel          # once, if not already installed
-heppyyier kernel install
+heyy kernel install
 ```
 
 The kernel spec embeds `PATH`, `DYLD_LIBRARY_PATH`/`LD_LIBRARY_PATH`, `PYTHONPATH`, and
@@ -565,16 +576,48 @@ heppyyier.load("fastjet")
 import lhapdf          # works directly — PYTHONPATH is already set
 ```
 
-Options:
+### Kernel naming and multiple environments
+
+Each venv gets an automatically distinct kernel name: **`heppyyier-<venv-name>`**. If you
+maintain separate environments for different projects — say `henv-fastjet` and
+`henv-pythia` — running `heyy kernel install` from inside each one produces
+`heppyyier-henv-fastjet` and `heppyyier-henv-pythia` as separate kernels with no extra
+flags. You only need `--name` if you want something more descriptive than the venv
+directory name.
+
+The display name shown in JupyterLab defaults to `HEP (<package list>)` so you can
+immediately tell what is available in each kernel without opening it.
+
+### Install options
 
 ```bash
-heppyyier kernel install --name my-hep-env          # custom kernel name
-heppyyier kernel install --display-name "HEP 2026"  # custom label in JupyterHub
-heppyyier kernel install --sys-prefix               # install into sys.prefix (shared hub)
+heyy kernel install --name my-hep-env          # custom kernel slug
+heyy kernel install --display-name "HEP 2026"  # custom label in JupyterHub/Lab
+heyy kernel install --sys-prefix               # install into sys.prefix (shared JupyterHub)
 ```
 
-After installing new packages, re-run `heppyyier kernel install` (same `--name`) to refresh
-the embedded paths — the existing spec is replaced in place.
+### Updating after new package installs
+
+After `heyy install <pkg>`, refresh the kernel to pick up the new paths:
+
+```bash
+heyy kernel update              # refresh current venv's kernel
+heyy kernel update heppyyier-henv-dev   # refresh a named kernel
+```
+
+`kernel update` is equivalent to re-running `kernel install` with the same name, but
+it fails with a clear error (and a hint to run `kernel install`) if no kernel exists yet,
+rather than silently creating one.
+
+### Listing and removing kernels
+
+```bash
+heyy kernel list                         # show all heppyyier-managed kernels
+heyy kernel uninstall heppyyier-henv-dev # remove one (name from 'kernel list')
+```
+
+`kernel list` shows only kernels created by heppyyier (identified by metadata written at
+install time). `kernel uninstall` refuses to touch kernels not managed by heppyyier.
 
 ---
 
@@ -614,10 +657,11 @@ import fastjet, pythia8   # ready — no build, no wait
 
 Each user's `heyy kernel install` creates a `kernel.json` in their own
 `~/.local/share/jupyter/kernels/` that references the shared packages. The
-packages themselves are never copied. To remove a kernel:
+packages themselves are never copied. To manage kernels:
 ```bash
-jupyter kernelspec list
-jupyter kernelspec remove <kernel-name>
+heyy kernel list                         # show heppyyier-managed kernels
+heyy kernel update                       # refresh after the admin installs new packages
+heyy kernel uninstall heppyyier-myenv    # remove (name from 'kernel list')
 ```
 
 ### Option 2 — packages built by another tool
