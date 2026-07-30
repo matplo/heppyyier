@@ -575,9 +575,14 @@ def kernel():
 
     \b
     Typical workflow:
-      heyy kernel install            # create or refresh after 'heyy install <pkg>'
+      heyy kernel install            # create the kernel for this environment
+      heyy kernel update             # refresh after 'heyy install <pkg>'
       heyy kernel list               # show registered heppyyier kernels
       heyy kernel uninstall <name>   # remove a kernel (name from 'kernel list')
+
+    Each henv/venv gets its own kernel named heppyyier-<venv-name>, so
+    multiple environments are automatically kept separate. Run 'kernel list'
+    to see all registered kernels and their associated package directories.
     """
 
 
@@ -645,6 +650,49 @@ def kernel_list():
     click.echo("-" * 100)
     for k in kernels:
         click.echo(f"{k['name']:<30} {k['display_name']:<40} {k['packages_dir']}")
+
+
+@kernel.command("update")
+@click.argument("name", required=False, default=None)
+@click.option("--sys-prefix", "sys_prefix", is_flag=True, default=False,
+              help="Re-install into sys.prefix (default: user install).")
+def kernel_update(name, sys_prefix):
+    """Refresh an existing heppyyier kernel spec to pick up new packages.
+
+    NAME is the kernel slug from 'heyy kernel list'. When omitted, the kernel
+    for the current environment (heppyyier-<venv-name>) is updated.
+
+    Only the env block is meaningfully updated (PATH, PYTHONPATH, library
+    paths). The kernel will be rewritten with the current Python interpreter,
+    so run this from inside the same henv that originally created the kernel.
+
+    \b
+    Examples:
+      heyy kernel update                        # refresh current venv's kernel
+      heyy kernel update heppyyier-henv-dev     # refresh a named kernel
+    """
+    from .kernel import update_kernel
+    try:
+        dest = update_kernel(name=name, user=not sys_prefix)
+    except KeyError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+    except PermissionError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+    except RuntimeError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+    import json
+    spec = json.loads((dest / "kernel.json").read_text())
+    click.echo(f"Kernel updated: {dest}")
+    click.echo(f"  display name : {spec['display_name']}")
+    click.echo(f"  python       : {spec['argv'][0]}")
+    env = spec.get("env", {})
+    if "HEPPYYIER_PACKAGES_DIR" in env:
+        click.echo(f"  packages dir : {env['HEPPYYIER_PACKAGES_DIR']}")
+    click.echo(f"\nSelect '{spec['display_name']}' in JupyterHub/Lab to use it.")
 
 
 @kernel.command("uninstall")

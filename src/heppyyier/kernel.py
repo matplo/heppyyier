@@ -159,6 +159,59 @@ def list_kernels() -> list:
     return results
 
 
+def update_kernel(
+    name: Optional[str] = None,
+    display_name: Optional[str] = None,
+    user: bool = True,
+) -> pathlib.Path:
+    """Refresh the env embedded in an existing heppyyier kernel spec.
+
+    If *name* is None the default name for the current venv is used.
+    Warns when the kernel's recorded Python executable differs from the
+    current one (the spec will be rewritten with the current Python).
+    Raises KeyError if no kernel with that name exists yet.
+    """
+    _check_deps()
+    from jupyter_client.kernelspec import KernelSpecManager, NoSuchKernel
+
+    if name is None:
+        name = "heppyyier-" + pathlib.Path(sys.prefix).name
+
+    mgr = KernelSpecManager()
+    try:
+        existing = mgr.get_kernel_spec(name)
+    except NoSuchKernel:
+        raise KeyError(
+            f"No kernel named '{name}' found. "
+            "Run 'heyy kernel install' to create it first."
+        )
+
+    if not existing.metadata.get("heppyyier"):
+        raise PermissionError(
+            f"Kernel '{name}' was not installed by heppyyier — refusing to update it."
+        )
+
+    # Warn when the stored Python differs from the current interpreter.
+    stored_python = existing.argv[0] if existing.argv else None
+    if stored_python and stored_python != sys.executable:
+        import warnings
+        warnings.warn(
+            f"[heppyyier] Kernel '{name}' was previously installed with\n"
+            f"  {stored_python}\n"
+            f"but is now being refreshed with\n"
+            f"  {sys.executable}\n"
+            "The kernel will use the current Python after this update.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    # Preserve display name from existing spec unless caller overrides.
+    if display_name is None:
+        display_name = existing.display_name
+
+    return install_kernel(name=name, display_name=display_name, user=user)
+
+
 def remove_kernel(name: str) -> pathlib.Path:
     """Remove a heppyyier-managed kernel spec by name.
 
