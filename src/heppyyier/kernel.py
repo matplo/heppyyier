@@ -47,11 +47,14 @@ def _build_env(packages_dir: pathlib.Path, packages: dict) -> dict:
                 lib_parts.append(str(lib_dir))
             for sp in sorted(lib_dir.glob("python*/site-packages")):
                 pythonpath_parts.append(str(sp))
-        else:
-            # --target layout: pip install --target {prefix} puts packages
-            # directly in the prefix (no lib/ subdir). Detect by .dist-info dirs.
-            if any(prefix.glob("*.dist-info")):
-                pythonpath_parts.append(str(prefix))
+
+        # Respect python_paths from the registry record (mirrors what loader.py
+        # does in _setup_python_paths). This is the authoritative source —
+        # filesystem heuristics can miss non-standard layouts.
+        for rel in rec.get("python_paths", []):
+            full = str(prefix / rel)
+            if full not in pythonpath_parts:
+                pythonpath_parts.append(full)
 
     def _prepend(parts: list, current: str) -> Optional[str]:
         if not parts:
