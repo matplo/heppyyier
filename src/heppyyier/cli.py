@@ -571,22 +571,35 @@ def recipe_update():
 
 @cli.group()
 def kernel():
-    """Manage Jupyter kernel registrations."""
+    """Manage Jupyter kernel registrations.
+
+    \b
+    Typical workflow:
+      heyy kernel install            # create or refresh after 'heyy install <pkg>'
+      heyy kernel list               # show registered heppyyier kernels
+      heyy kernel uninstall <name>   # remove a kernel (name from 'kernel list')
+    """
 
 
 @kernel.command("install")
-@click.option("--name", default=None, help="Kernel name (default: heppyyier-<venv-name>).")
+@click.option("--name", default=None, help="Kernel name slug used internally by Jupyter (default: heppyyier-<venv-name>).")
 @click.option("--display-name", "display_name", default=None,
-              help="Display name shown in JupyterHub/Lab (default: 'HEP (<pkg list>)').")
+              help="Human-readable name shown in JupyterHub/Lab (default: 'HEP (<pkg list>)').")
 @click.option("--sys-prefix", "sys_prefix", is_flag=True, default=False,
-              help="Install into sys.prefix instead of the user's home directory.")
+              help="Install into sys.prefix so all users of this environment see the kernel; default installs for the current user only.")
 def kernel_install(name, display_name, sys_prefix):
-    """Register a Jupyter kernel for the current heppyyier environment.
+    """Create or refresh the heppyyier Jupyter kernel spec.
 
-    The kernel spec embeds PATH, library paths, and PYTHONPATH for every
-    installed package, so notebooks work without any manual setup.
+    Embeds PATH, library paths, and PYTHONPATH for every installed package
+    so notebooks work without any manual environment setup.
 
-    Re-run after installing new packages to refresh the kernel's environment.
+    Re-run this command after 'heyy install <pkg>' to pick up new packages.
+
+    \b
+    Examples:
+      heyy kernel install
+      heyy kernel install --name hep-dev --display-name "HEP dev env"
+      heyy kernel install --sys-prefix   # shared JupyterHub install
     """
     from .kernel import install_kernel
     try:
@@ -611,7 +624,12 @@ def kernel_install(name, display_name, sys_prefix):
 
 @kernel.command("list")
 def kernel_list():
-    """List heppyyier-managed Jupyter kernels."""
+    """List heppyyier-managed Jupyter kernels.
+
+    Shows only kernels created by 'heyy kernel install'. Columns: kernel
+    name (pass to 'heyy kernel uninstall'), display name shown in
+    JupyterHub/Lab, and the heppyyier packages directory embedded in the spec.
+    """
     from .kernel import list_kernels
     try:
         kernels = list_kernels()
@@ -632,7 +650,17 @@ def kernel_list():
 @kernel.command("uninstall")
 @click.argument("name")
 def kernel_uninstall(name):
-    """Remove a heppyyier-managed Jupyter kernel spec."""
+    """Remove a heppyyier-managed Jupyter kernel spec.
+
+    NAME is the kernel slug shown in the first column of 'heyy kernel list'.
+    Only kernels installed by heppyyier can be removed this way; others are
+    left untouched.
+
+    \b
+    Example:
+      heyy kernel list                        # find the kernel name
+      heyy kernel uninstall heppyyier-myenv   # remove it
+    """
     from .kernel import remove_kernel
     try:
         removed = remove_kernel(name)
