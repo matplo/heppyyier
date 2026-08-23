@@ -80,9 +80,10 @@ class PackageBuilder:
         self._verify(prefix)
         generate_env_scripts(self.recipe.name, version, prefix,
                              python_paths=self.recipe.python_paths)
-        write_tcl_modulefile(self.recipe.name, version, prefix,
-                             python_paths=self.recipe.python_paths,
-                             depends_on=self.recipe.depends_on)
+        if self.recipe.generate_modulefile:
+            write_tcl_modulefile(self.recipe.name, version, prefix,
+                                 python_paths=self.recipe.python_paths,
+                                 depends_on=self.recipe.depends_on)
         return self._make_registry_record(prefix, version, log_path)
 
     def _base_env(self) -> dict:
@@ -426,9 +427,10 @@ def register_package(
 
     generate_env_scripts(recipe.name, ver, prefix_path,
                          python_paths=recipe.python_paths)
-    write_tcl_modulefile(recipe.name, ver, prefix_path,
-                         python_paths=recipe.python_paths,
-                         depends_on=recipe.depends_on)
+    if recipe.generate_modulefile:
+        write_tcl_modulefile(recipe.name, ver, prefix_path,
+                             python_paths=recipe.python_paths,
+                             depends_on=recipe.depends_on)
     get_registry().register(recipe.name, record)
     print(f"Registered {recipe.name} {ver} from {prefix_path}")
     return record

@@ -30,6 +30,7 @@ class Recipe:
     cppyy_libraries: List[str] = field(default_factory=list)
     depends_on: List[str] = field(default_factory=list)
     python_paths: List[str] = field(default_factory=list)
+    generate_modulefile: bool = True  # set False for pure-pip installs that need no env setup
     source_path: Optional[pathlib.Path] = None  # set by load_recipe; None = unknown
 
     def resolved_url(self, version: Optional[str] = None) -> str:
@@ -80,6 +81,7 @@ def load_recipe(path: pathlib.Path) -> Recipe:
         cppyy_libraries=cppyy.get("libraries", []),
         depends_on=data.get("depends_on", []),
         python_paths=data.get("python_paths", []),
+        generate_modulefile=data.get("generate_modulefile", True),
         source_path=path,
     )
 
