@@ -12,6 +12,29 @@ import os as _os
 import sys as _sys
 
 if any(k.startswith("HEPPYYIER_LOADED_") for k in _os.environ):
+    # Set CPPYY_API_PATH before the MetaPathFinder is installed so that user
+    # code which does a bare `import cppyy` (before `import fastjet`) picks up
+    # the correct CPyCppyy C-level API directory.  Without this, cppyy's
+    # string_meta is initialised without npos and calling any C++ function that
+    # returns std::string raises AttributeError at runtime.
+    # pip '--target' installs put the headers at:
+    #   {cppyy_prefix}/include/site/python<ver>/CPyCppyy/
+    if 'CPPYY_API_PATH' not in _os.environ and 'cppyy' not in _sys.modules:
+        try:
+            import glob as _glob
+            import pathlib as _pathlib
+            from heppyyier.registry import get_registry as _gr_early
+            _rec_early = _gr_early().get('cppyy')
+            if _rec_early:
+                _prefix_early = _pathlib.Path(_rec_early['prefix'])
+                _cands_early = _glob.glob(
+                    str(_prefix_early / 'include' / 'site' / 'python*' / 'CPyCppyy')
+                )
+                if _cands_early:
+                    _os.environ['CPPYY_API_PATH'] = _cands_early[0]
+        except Exception:
+            pass
+
     try:
         import importlib.abc as _abc
         import importlib.machinery as _machinery
@@ -26,7 +49,15 @@ if any(k.startswith("HEPPYYIER_LOADED_") for k in _os.environ):
             _names.remove("root")
             _names.insert(0, "root")
 
-        _pending = list(_names)
+        # Only intercept imports for packages without a real Python module.
+        # If a package IS a real Python module (cppyy, lhapdf SWIG bindings,
+        # etc.), intercepting its import causes heppyyier.load() to run while
+        # that module is still being initialised by Python's import machinery.
+        # The nested `import cppyy` inside _setup_cppyy() then gets a
+        # partially-initialised module back, breaking string_meta (npos) and
+        # all cppyy C++ type wrappers.  Let real Python packages load normally.
+        import importlib.util as _ilu
+        _pending = [n for n in _names if _ilu.find_spec(n) is None]
 
         class _HeppyyierLazyLoader(_abc.Loader):
             def __init__(self, mod):

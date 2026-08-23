@@ -138,6 +138,20 @@ def generate_env_scripts(name: str, version: str, prefix: pathlib.Path, python_p
     ]
     for d in py_dirs:
         set_lines.append(f'export PYTHONPATH="{d}:$PYTHONPATH"')
+
+    # CPyCppyy API headers: pip '--target' installs land at
+    #   {prefix}/include/site/python*/CPyCppyy/
+    # Export CPPYY_API_PATH so that a bare `import cppyy` in user code (before
+    # heppyyier.load is called) initialises cppyy's string_meta correctly.
+    import glob as _glob_sh
+    _cpycppyy_cands = _glob_sh.glob(
+        str(prefix / 'include' / 'site' / 'python*' / 'CPyCppyy')
+    )
+    _cpycppyy_api = _cpycppyy_cands[0] if _cpycppyy_cands else None
+
+    if _cpycppyy_api:
+        set_lines.append(f'export CPPYY_API_PATH="{_cpycppyy_api}"')
+
     set_lines += [
         f'export CPATH="{inc_dir}:$CPATH"',
         f'export HEPPYYIER_LOADED_{NAME}="{version}"',
@@ -152,6 +166,8 @@ def generate_env_scripts(name: str, version: str, prefix: pathlib.Path, python_p
     ]
     for d in py_dirs:
         unset_lines.append(f'export PYTHONPATH="${{PYTHONPATH//{_esc(d)}:/}}"')
+    if _cpycppyy_api:
+        unset_lines.append('unset CPPYY_API_PATH')
     unset_lines += [
         f'export CPATH="${{CPATH//{_esc(inc_dir)}:/}}"',
         f"unset {NAME}_DIR",

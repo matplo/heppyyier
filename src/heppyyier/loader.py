@@ -240,24 +240,43 @@ class Loader:
                 sys.path.insert(0, p)
 
     def _ensure_cppyy_api_path(self) -> None:
-        """Set CPPYY_API_PATH from cppyy_backend's own include/ directory.
+        """Set CPPYY_API_PATH from the CPyCppyy C-level API headers.
 
         cppyy checks CPPYY_API_PATH at import time to find the CPyCppyy C-level
         API headers. When they are missing (common with 'uv pip install' on Colab
         or non-standard prefix installs), cppyy can parse headers with cling but
-        cannot expose C++ namespaces as Python objects — cppyy.gbl.fastjet is
-        None even after a successful cppyy.include(). Must be called BEFORE
-        'import cppyy'.
+        cannot expose C++ namespaces as Python objects — std::string's string_meta
+        loses its npos attribute and cppyy.gbl.<ns> is None even after a successful
+        cppyy.include(). Must be called BEFORE 'import cppyy'.
+
+        pip '--target {prefix}' installs place the headers at:
+            {prefix}/include/site/python<ver>/CPyCppyy/
+        Standard site-packages installs place them at:
+            {cppyy_backend.parent}/include/CPyCppyy/  (or .../include/)
         """
         if 'CPPYY_API_PATH' in os.environ:
             return
         if 'cppyy' in sys.modules:
             return  # too late to help, but don't clobber
         try:
+            import glob
             import cppyy_backend as _cb
-            api_path = pathlib.Path(_cb.__file__).parent / 'include'
-            if api_path.is_dir():
-                os.environ['CPPYY_API_PATH'] = str(api_path)
+            # pip --target layout: {prefix}/include/site/python*/CPyCppyy/
+            prefix = pathlib.Path(_cb.__file__).parent.parent
+            candidates = glob.glob(
+                str(prefix / 'include' / 'site' / 'python*' / 'CPyCppyy')
+            )
+            if candidates:
+                os.environ['CPPYY_API_PATH'] = candidates[0]
+                return
+            # Standard layout: include/CPyCppyy/ or just include/ next to cppyy_backend
+            for probe in (
+                pathlib.Path(_cb.__file__).parent / 'include' / 'CPyCppyy',
+                pathlib.Path(_cb.__file__).parent / 'include',
+            ):
+                if probe.is_dir():
+                    os.environ['CPPYY_API_PATH'] = str(probe)
+                    return
         except ImportError:
             pass
 
