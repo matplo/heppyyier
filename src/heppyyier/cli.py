@@ -25,16 +25,19 @@ def cli():
 @click.option("--clean", is_flag=True, help="Clean build artifacts and rebuild, keeping the extracted source tree.")
 @click.option("--verbose", is_flag=True, help="Show build output in terminal.")
 @click.option("--njobs", "-j", default=None, type=int, help="Override parallel make jobs (overrides recipe default of 4).")
-def install(packages, version, recipe_path, force, redownload, clean, verbose, njobs):
+@click.option("--set", "-s", "set_vars", multiple=True, metavar="KEY=VALUE",
+              help="Override a Jinja2 template variable in the build script (e.g. --set WITH_GPU=1).")
+def install(packages, version, recipe_path, force, redownload, clean, verbose, njobs, set_vars):
     """Download, build, and register one or more HEP C++ packages (in order)."""
     from .builder import build_package
+    extra_vars = dict(kv.split("=", 1) for kv in set_vars if "=" in kv)
     for i, package in enumerate(packages):
         # --version and --recipe only apply when a single package is given
         _version = version if len(packages) == 1 else None
         _recipe_path = recipe_path if len(packages) == 1 else None
         if len(packages) > 1:
             click.echo(f"\n[{i+1}/{len(packages)}] Installing {package} ...")
-        build_package(package, version=_version, recipe_path=_recipe_path, force=force, redownload=redownload, clean=clean, verbose=verbose, njobs=njobs)
+        build_package(package, version=_version, recipe_path=_recipe_path, force=force, redownload=redownload, clean=clean, verbose=verbose, njobs=njobs, extra_vars=extra_vars)
 
 
 # ---------------------------------------------------------------------------

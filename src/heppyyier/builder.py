@@ -27,9 +27,10 @@ def _resolve_lib_dir(prefix: pathlib.Path) -> pathlib.Path:
 
 
 class PackageBuilder:
-    def __init__(self, recipe: Recipe, verbose: bool = False):
+    def __init__(self, recipe: Recipe, verbose: bool = False, extra_vars: dict = None):
         self.recipe = recipe
         self.verbose = verbose
+        self.extra_vars = extra_vars or {}  # --set KEY=VALUE overrides for Jinja2 scripts
         self._build_dir = get_build_dir()
         self._log_dir = get_log_dir()
         self._clean_build = False
@@ -288,7 +289,24 @@ class PackageBuilder:
             CC=env.get("CC", "cc"),
             **pkg_vars,
         )
-        script = self.recipe.build_script.format_map(fmt)
+
+        if self.recipe.build_script_is_jinja:
+            import platform as _plat
+            jinja_ctx = dict(fmt)
+            jinja_ctx.update(
+                platform=_plat.system().lower(),       # "darwin" / "linux"
+                arch=_plat.machine().lower(),           # "arm64" / "x86_64"
+                python_version=f"{sys.version_info.major}.{sys.version_info.minor}",
+                python_major=sys.version_info.major,
+                python_minor=sys.version_info.minor,
+            )
+            jinja_ctx.update(self.extra_vars or {})    # --set KEY=VALUE overrides
+            import jinja2
+            j2_env = jinja2.Environment(undefined=jinja2.Undefined)
+            script = j2_env.from_string(self.recipe.build_script).render(**jinja_ctx)
+        else:
+            script = self.recipe.build_script.format_map(fmt)
+
         print("Running custom build script ...")
         self._run(["bash", "-c", script], src_dir, log_path, env=env)
 
@@ -336,6 +354,7 @@ def build_package(
     verbose: bool = False,
     njobs: Optional[int] = None,
     clean: bool = False,
+    extra_vars: dict = None,
 ) -> dict:
     from .recipe import find_recipe
     from .registry import get_registry
@@ -359,7 +378,7 @@ def build_package(
             print(f"[{name}] Installing dependency: {dep}")
             build_package(dep, verbose=verbose, njobs=njobs)
 
-    builder = PackageBuilder(recipe, verbose=verbose)
+    builder = PackageBuilder(recipe, verbose=verbose, extra_vars=extra_vars)
     record = builder.build(version=version or recipe.version, force=force, redownload=redownload, clean=clean)
     reg.register(recipe.name, record)
     print(f"\n{recipe.name} {record['version']} installed at {record['prefix']}")

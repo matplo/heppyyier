@@ -24,6 +24,7 @@ class Recipe:
     make_jobs: int = 4
     verify_binary: Optional[str] = None
     build_script: Optional[str] = None
+    build_script_is_jinja: bool = False  # True when loaded from an external .sh file
     cppyy_namespace: str = ""
     cppyy_headers: List[str] = field(default_factory=list)
     cppyy_libraries: List[str] = field(default_factory=list)
@@ -49,6 +50,21 @@ def load_recipe(path: pathlib.Path) -> Recipe:
     name = data["name"]
     namespace = cppyy.get("namespace", name)
 
+    # Resolve build_script: if the value is a single-line .sh filename, load
+    # the file from the same directory as the YAML and mark it for Jinja2.
+    _bs_raw = data.get("build_script")
+    _bs_is_jinja = False
+    if _bs_raw and isinstance(_bs_raw, str) and "\n" not in _bs_raw.strip():
+        _bs_name = _bs_raw.strip()
+        if _bs_name.endswith((".sh", ".bash")):
+            _script_file = path.parent / _bs_name
+            if not _script_file.exists():
+                raise RecipeNotFoundError(
+                    f"build_script file not found: {_script_file} (referenced from {path})"
+                )
+            _bs_raw = _script_file.read_text()
+            _bs_is_jinja = True
+
     return Recipe(
         name=name,
         version=str(data["version"]),
@@ -57,7 +73,8 @@ def load_recipe(path: pathlib.Path) -> Recipe:
         configure_args=data.get("configure_args", []),
         make_jobs=data.get("make_jobs", 4),
         verify_binary=data.get("verify_binary"),
-        build_script=data.get("build_script"),
+        build_script=_bs_raw,
+        build_script_is_jinja=_bs_is_jinja,
         cppyy_namespace=namespace,
         cppyy_headers=cppyy.get("headers", []),
         cppyy_libraries=cppyy.get("libraries", []),
