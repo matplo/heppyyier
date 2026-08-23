@@ -130,9 +130,11 @@ def find_recipe(
     if candidate.exists() and candidate.suffix in (".yaml", ".yml"):
         return load_recipe(candidate)
 
-    # Search remote sources first (allows recipe updates without reinstalling heppyyier),
-    # fall back to built-ins shipped with the package.
+    # Support "name/version" shorthand (e.g. heyy install cppyy/3.5.0)
     name = name_or_path
+    if "/" in name and version is None:
+        parts = name.split("/", 1)
+        name, version = parts[0], parts[1]
 
     from .recipe_sources import search_sources
     found = search_sources(name, version)
