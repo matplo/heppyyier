@@ -444,7 +444,8 @@ def generate_modules():
                 python_paths = r.python_paths
             except Exception:
                 python_paths = []
-        mod_file = write_tcl_modulefile(name, record["version"], pathlib.Path(record["prefix"]), python_paths=python_paths)
+        depends_on = record.get("depends_on") or []
+        mod_file = write_tcl_modulefile(name, record["version"], pathlib.Path(record["prefix"]), python_paths=python_paths, depends_on=depends_on)
         click.echo(f"  wrote {mod_file}")
         count += 1
     if count == 0:

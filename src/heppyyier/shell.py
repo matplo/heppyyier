@@ -60,7 +60,7 @@ def get_modulefiles_dir() -> pathlib.Path:
     return get_build_dir() / "modulefiles"
 
 
-def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path, python_paths=None) -> pathlib.Path:
+def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path, python_paths=None, depends_on=None) -> pathlib.Path:
     """Generate a TCL modulefile for use with Environment Modules / Lmod."""
     NAME = name.upper().replace("-", "_")
     p = prefix
@@ -70,6 +70,13 @@ def write_tcl_modulefile(name: str, version: str, prefix: pathlib.Path, python_p
         "",
         f'module-whatis "{name} {version}"',
         "",
+    ]
+    # Load dependencies first so 'module load hepbundle' cascades to all members.
+    for dep in (depends_on or []):
+        lines.append(f"module load {dep}")
+    if depends_on:
+        lines.append("")
+    lines += [
         f"set prefix {p}",
         "",
         f"setenv {NAME}_DIR $prefix",
