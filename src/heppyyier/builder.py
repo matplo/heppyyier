@@ -380,6 +380,11 @@ def build_package(
 
     builder = PackageBuilder(recipe, verbose=verbose, extra_vars=extra_vars)
     record = builder.build(version=version or recipe.version, force=force, redownload=redownload, clean=clean)
+    # Re-read registry from disk before writing: a build script may have called
+    # 'heyy install <dep>' as a subprocess, whose writes are on disk but not in
+    # the in-memory 'reg' object loaded above.  Reloading prevents those entries
+    # from being silently dropped when we write this package's record.
+    reg = get_registry()
     reg.register(recipe.name, record)
     print(f"\n{recipe.name} {record['version']} installed at {record['prefix']}")
     return record
